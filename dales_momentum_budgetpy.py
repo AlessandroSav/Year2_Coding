@@ -75,7 +75,7 @@ def adjust_lightness(color, amount=0.7):
 #%%                         Open Files
 ###############################################################################
 expnr      = ['001','002','003','004','005','006','007','008','009','010',\
-              '011','012','013','014','015','016']
+              '011','012','013','014','015','016','017','018']
 # expnr      = ['014','015','016'] 
 case       = '20200202_12'
 casenr     = '001'      # experiment number where to read input files 
@@ -819,7 +819,7 @@ harm_clim_avg.cl.plot(x='time',cmap=plt.cm.Blues_r,vmax=0.005,vmin=0)
 exp_tmser.zc_max.rolling(time=30, center=True).mean().plot(c='r',ls='-')
 exp_tmser.zc_av.plot(c='r',ls='--')
 plt.ylim([0,7000])
-plt.xlim([None,'2020-02-10'])
+plt.xlim([None,'2020-02-11'])
 for tm in np.arange(srt_time, end_time):
     plt.axvline(x=tm,c='k')
 #%%
@@ -1001,9 +1001,9 @@ if comp_observations:
 #%%
     ### SURFACE LATENT HEAT FLUX 
     plt.figure(figsize=(15,6))
-    plt.plot(tmser.time, ls_surf['rho'].mean() * tmser.wq * Lv,c=col[1],lw=0.9,label='DALES from cy40 hind')
+    plt.plot(tmser.time, ls_surf['rho'].mean() * tmser.wq * Lv,c=col[1],lw=0.9,label='DALES')
     if comp_experiments:
-        plt.plot(tmser_isurf5.time, ls_surf['rho'].mean() * tmser_isurf5.wq * Lv,c=col[5],lw=0.7,label='DALES from cy43 clim')
+        plt.plot(tmser_isurf5.time, ls_surf['rho'].mean() * tmser_isurf5.wq * Lv,c=col[5],lw=0.7,label='DALES exp')
     # harm_hind_avg['300'].LE.plot()
     harm_clim_avg.hfls.mean(dim=['x','y']).plot(c=col[6],lw=2,label='HARMONIE_cy43 clim')
     xr.plot.scatter(Meteor,'time','LHF_bulk_mast',alpha = 0.6,s=10,c=col[2],label='Meteor')
@@ -1019,14 +1019,13 @@ if comp_observations:
         
     ### SURFACE SENSIBLE HEAT FLUX
     plt.figure(figsize=(15,6))
-    plt.plot(tmser.time, rho * tmser.wtheta * cp,c=col[1],lw=0.7,label='DALES from cy40 hind')
+    plt.plot(tmser.time, rho * tmser.wtheta * cp,c=col[1],lw=0.7,label='DALES')
     if comp_experiments:
-        plt.plot(tmser_isurf5.time, rho * tmser_isurf5.wtheta * cp,c=col[5],lw=0.9,label='DALES from cy43 clim')
+        plt.plot(tmser_isurf5.time, rho * tmser_isurf5.wtheta * cp,c=col[5],lw=0.9,label='DALES exp')
     harm_hind_avg['300'].H.plot(c=col[0],lw=2,label='HARMONIE_cy40 hind')
     harm_clim_avg.hfss.mean(dim=['x','y']).plot(c=col[6],lw=2,label='HARMONIE_cy43 clim')
     xr.plot.scatter(Meteor,'time','SHF_bulk_mast',alpha = 0.6,s=10,c=col[2],label='Meteor')
     xr.plot.scatter(Meteor,'time','SHF_EC_mast',alpha = 0.4,s=10,label='EC')
-
     plt.xlabel('time')
     plt.ylabel('SH ($W/m^2$)')
     plt.title('Surface sensible heat flux',size=20)
@@ -1035,6 +1034,18 @@ if comp_observations:
     plt.legend()
     for day in np.arange(srt_time,end_time):
         plt.axvline(x=day,c='k',lw=0.5)
+        
+    # flux profiles
+    plt.figure(figsize=(10,9))
+    (profiles.rhof * profiles.wqtt * Lv).plot(y='z',vmin=0,vmax=+500, cmap='coolwarm')
+    plt.ylim([0,4000])
+    plt.title('Latent heat flux',size=20)
+    # plt.figure(figsize=(10,9))
+    # # sensible heat flux uses theta not thetaV
+    # (profiles.rhof * profiles.wthvt * cp).plot(y='z',vmin=0,vmax=+40, cmap='coolwarm')
+    # plt.ylim([0,4000])
+    # plt.title('Sensible heat flux',size=20)
+    
         
 #%% DAILY MEANS
 ## momentum fluxes
