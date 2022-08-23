@@ -55,7 +55,7 @@ cl_max_HAR = np.load('/Users/acmsavazzi/Documents/WORK/PhD_Year2/Figures/cl_max_
 
 if spec:
     ## For spectral analysis
-    s_time_H      = np.load(lp_H+'/spec_time_HAR.npy', allow_pickle=True) #there is a pproblem with time
+    s_time_H      = np.load(lp_H+'/spec_time_HAR.npy', allow_pickle=True) #there is a problem with time
     s_plttime_H   = np.load(lp_H+'/spec_plttime_HAR.npy', allow_pickle=True)
     s_pltz_H      = np.load(lp_H+'/spec_pltz_HAR.npy', allow_pickle=True)
     # s_ztlim_H     = np.load(lp_H+'/spec_zt_HAR.npy', allow_pickle=True)
@@ -75,7 +75,7 @@ if scale_sep:
 if spec:
 
     ## For spectral analysis
-    s_time      = np.load(lp+'/spec_time.npy', allow_pickle=True) #there is a pproblem with time
+    s_time      = np.load(lp+'/spec_time.npy', allow_pickle=True) #there is a problem with time
     s_plttime   = np.load(lp+'/spec_plttime.npy', allow_pickle=True)
     s_pltz      = np.load(lp+'/spec_pltz.npy', allow_pickle=True)
     s_ztlim     = np.load(lp+'/spec_zt.npy', allow_pickle=True)
@@ -87,7 +87,7 @@ if spec:
     s_k1d       = np.load(lp+'/spec_k1d.npy', allow_pickle=True)
     
     dir_dales = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/'
-    s_time      = np.load(dir_dales+'/spec_time.npy', allow_pickle=True) #there is a pproblem with time
+    s_time      = np.load(dir_dales+'/spec_time.npy', allow_pickle=True) #there is a problem with time
     s_plttime   = np.load(dir_dales+'/spec_plttime.npy', allow_pickle=True)
     s_pltz      = np.load(dir_dales+'/spec_pltz.npy', allow_pickle=True)
     s_ztlim     = np.load(dir_dales+'/spec_zt.npy', allow_pickle=True)

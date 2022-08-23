@@ -369,6 +369,15 @@ if comp_experiments:
     mom_isurf5 = mom_isurf5.to_xarray()
     mom_isurf5['time'] = srt_time + mom_isurf5.time.astype("timedelta64[s]")
 
+
+#%% import and cut merged_fielddump
+print("Reading DALES merged_fielddump")
+fielddump = xr.open_mfdataset(dales_exp_dir+'/Exp_003/merged_fielddump_wind.003.nc',decode_times=False)
+cross_u = fielddump['u'].sel(yt=1200,zt=slice(0,5500),xm=slice(100,1200))
+cross_v = fielddump['v'].sel(ym=1200,zt=slice(0,5500),xt=slice(100,1200))
+cross_w = fielddump['w'].sel(yt=1200,zm=slice(0,5500),xt=slice(100,1200))
+
+
 #%% Import Harmonie
 ### Import large scale spatial means (used for LES forcing)
 print("Reading HARMONIE spatial mean (used for LES forcing).") 
