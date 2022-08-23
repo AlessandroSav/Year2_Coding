@@ -18,7 +18,7 @@ class DataLoaderDALES:
         self.lp = load_path
 
         try:
-            self.ds    = xr.open_mfdataset(self.lp+'/merged_fielddump_wind.'+casenr+'.nc')
+            self.ds    = xr.open_mfdataset(self.lp+'/merged_fielddump_wind.'+casenr+'.nc',decode_times=False)
             self.time  = self.ds['time']
             self.xt    = self.ds['xt']
             self.xm    = self.ds['xm']
@@ -47,17 +47,26 @@ class DataLoaderDALES:
     def load_qt(self, it, izmin, izmax):
         return np.ma.getdata(self.ds.variables['qt'][it,izmin:izmax,:,:])
     
-    def load_u(self, it, izmin, izmax):
+    def load_u(self, it, izmin, izmax=None):
         # return np.ma.getdata(self.ds.variables['u'][it,izmin:izmax,:,:])
-        return self.ds.isel(time=it,zt=slice(izmin,izmax))['u'].values
+        if izmax!=None:
+            return self.ds.isel(time=it,zt=slice(izmin,izmax))['u'].values
+        else:
+            return self.ds.isel(time=it).isel(zt=izmin)['u'].values
 
-    def load_v(self, it, izmin, izmax):
+    def load_v(self, it, izmin, izmax=None):
         # return np.ma.getdata(self.ds.variables['v'][it,izmin:izmax,:,:])
-        return self.ds.isel(time=it,zt=slice(izmin,izmax))['v'].values
+        if izmax!=None:
+            return self.ds.isel(time=it,zt=slice(izmin,izmax))['v'].values
+        else:
+            return self.ds.isel(time=it).isel(zt=izmin)['v'].values
 
-    def load_wm(self, it, izmin, izmax):
+    def load_wm(self, it, izmin, izmax=None):
         # return np.ma.getdata(self.ds.variables['w'][it,izmin:izmax+1,:,:])
-        return self.ds.isel(time=it,zm=slice(izmin,izmax))['w'].values
+        if izmax!=None:
+            return self.ds.isel(time=it,zm=slice(izmin,izmax))['w'].values
+        else:
+            return self.ds.isel(time=it).isel(zm=izmin)['w'].values
 
     def load_thl(self, it, izmin, izmax):
         return np.ma.getdata(self.ds.variables['thl'][it,izmin:izmax,:,:])

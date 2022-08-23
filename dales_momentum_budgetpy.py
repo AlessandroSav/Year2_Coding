@@ -17,6 +17,8 @@ import pandas as pd
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.colors import DivergingNorm
 import matplotlib.animation as animation
 import os
 from glob import glob
@@ -76,7 +78,6 @@ def adjust_lightness(color, amount=0.7):
 ###############################################################################
 expnr      = ['001','002','003','004','005','006','007','008','009','010',\
               '011','012','013','014','015','016','017','018']
-# expnr      = ['014','015','016'] 
 case       = '20200202_12'
 casenr     = '001'      # experiment number where to read input files 
 
@@ -117,7 +118,7 @@ ifs_dir         = '/Users/acmsavazzi/Documents/WORK/Research/MyData/'
 obs_dir         = '/Users/acmsavazzi/Documents/WORK/Research/MyData/'
 Aers_Dship_dir  = '/Users/acmsavazzi/Documents/WORK/Data/Aers-Dship/'
 #SAVE DIRECTORY 
-save_dir        = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/'
+save_dir        = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/Figures/'
 
 ### times to read and to plot 
 srt_time   = np.datetime64('2020-02-02')
@@ -139,7 +140,7 @@ harmonie_time_to_keep = '202002010000-'
 
 # col=['b','r','g','orange','k']
 col=['red','coral','maroon','blue','cornflowerblue','darkblue','green','lime','forestgreen','m']
-height_lim = [0,5000]        # in m
+height_lim = [0,4000]        # in m
 
 proj=ccrs.PlateCarree()
 coast = cartopy.feature.NaturalEarthFeature(\
@@ -268,7 +269,7 @@ tmser['time'] = srt_time + tmser.time.astype("timedelta64[s]")
 
 ####     samptend.nc    ####
 print("Reading DALES tendencies.") 
-samptend   = xr.open_mfdataset(samptend_files, combine='by_coords')
+samptend   = xr.open_mfdataset(np.sort(samptend_files), combine='by_coords')
 samptend['time'] = srt_time + samptend.time.astype("timedelta64[s]")
 # interpolate half level to full level
 samptend = samptend.interp(zm=samptend.zt)
@@ -432,21 +433,26 @@ if harm_3d:
     harm_clim_avg["z"] = (z_ref-z_ref.min()).values
     harm_clim_avg['z'] = harm_clim_avg.z.assign_attrs(units='m',long_name='Height')
     
-### 2D fields    
-###      # Read cloud fraction
-### !!!  THIS SHOULD BE MOVED TO HARMONIE_BASIC.PY !!!
-# print("Reading 2D HARMONIE data.") 
-# nc_files = []
-# for EXT in ["clt_his*.nc","cll_his*.nc","clm_his*.nc","clh_his*.nc","clwvi_his*.nc","clivi_his*.nc"]:
-#     for file in glob(os.path.join(harmonie_dir, EXT)):
-#         if harmonie_time_to_keep in file:
-#             nc_files.append(file) 
-# try:
-#     nc_data_cl  = xr.open_mfdataset(nc_files, combine='by_coords')
-# except TypeError:
-#     nc_data_cl  = xr.open_mfdataset(nc_files)
+## 2D fields    
+##      # Read cloud fraction
+## !!!  THIS SHOULD BE MOVED TO HARMONIE_BASIC.PY !!!
+print("Reading 2D HARMONIE data.") 
+nc_files = []
+for EXT in ["clt_his*.nc","cll_his*.nc","clm_his*.nc","clh_his*.nc","clwvi_his*.nc","clivi_his*.nc"]:
+    for file in glob(os.path.join(harmonie_dir, EXT)):
+        if harmonie_time_to_keep in file:
+            nc_files.append(file) 
+try:
+    nc_data_cl  = xr.open_mfdataset(nc_files, combine='by_coords')
+except TypeError:
+    nc_data_cl  = xr.open_mfdataset(nc_files)
     
-
+cl_max=np.zeros(len(harm_clim_avg.time))
+for ii in range(len(harm_clim_avg.time)) :
+    cl_max[ii]=(harm_clim_avg.z.where(harm_clim_avg.cl>0).isel(time=ii)).\
+        sel(z=slice(300,6000)).max().values
+        
+np.save(save_dir+'/cl_max_HARM.npy',cl_max)
 
 #%% Import observations
 print("Reading observations.") 
@@ -596,12 +602,25 @@ LStend_cluster=KMeans(n_clusters=min(tend_daily.time.size,3),random_state=0,n_in
 idx = np.argsort(LStend_cluster.cluster_centers_.sum(axis=1))
 
 
+
 profiles_daily['group_shear'] = (('time'), shear_cluster.labels_)
 profiles_daily['group_div']   = (('time'), div_cluster.labels_)
 tend_daily['group_LS']        = (('time'), LStend_cluster.labels_)
 profiles_daily['group_LS']    = tend_daily.group_LS
 
 profiles_daily_clusteres=profiles_daily.groupby('group_shear').mean()
+
+
+#%%
+### group by U variance 
+# first quaritle
+u2r_Q1 = np.quantile(profiles["u2r"].sel(z=slice(0,200)).mean('z'),0.25)
+time_u2r_Q1 = profiles.where(profiles.sel(z=slice(0,200)).mean('z').u2r < u2r_Q1,drop=True).time
+# time_u2r_Q1 = np.unique(time_u2r_Q1.dt.round('H').values.astype('datetime64[s]'))
+# third quartile
+u2r_Q3 = np.quantile(profiles["u2r"].sel(z=slice(0,200)).mean('z'),0.75)
+time_u2r_Q3 = profiles.where(profiles.sel(z=slice(0,200)).mean('z').u2r > u2r_Q3,drop=True).time
+# time_u2r_Q3 = np.unique(time_u2r_Q3.dt.round('H').values.astype('datetime64[s]'))
 #%%                         PLOTTING
 ###############################################################################
 print("Plotting.") 
@@ -641,22 +660,26 @@ print("Plotting.")
 day_interval    = [10,16]
 night_interval  = [22,4]
 
-days = ['2020-02-04','2020-02-06']
+days = ['2020-02-02','2020-02-03']
 def find_time_interval(time_1,time_2):
     if time_1 > time_2:
         temp= list(range(time_1,24)) + list(range(0,time_2+1))
     else: temp= list(range(time_1,time_2+1))
     return temp
 
-ii = 'all'
+ii = 'days'
 if ii == 'all':
     hrs_to_plot = profiles.sel(time=slice(temp_hrs[0],temp_hrs[1]))
     label = 'All days'
     title='Domain and Temporal mean'
 elif ii == 'days':
     hrs_to_plot = profiles.where(profiles.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
+    harm_toplot = harm_clim_avg.where(harm_clim_avg.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
     label = str(days)
     title='Domain mean for '+ " ".join(days)
+
+
+# hrs_to_plot = profiles.sel(time=slice('2020-02-03T13','2020-02-03T14'))
 
 
 for group_by in ['groups']:        
@@ -689,29 +712,34 @@ for group_by in ['groups']:
     # plt.savefig(save_dir+'mean_cfrac.pdf')
     
     ## winds
-    plt.figure(figsize=(6,9))
-    plt.suptitle('Winds')
+    plt.figure(figsize=(4,9))
     for idx,var in enumerate(['u','v']):
-        hrs_to_plot[var].mean('time').plot(y='z',c=col[idx*3],lw=2, label='DALES '+var)
-        if group_by == 'flights':
-            profiles.where(profiles.time.dt.strftime('%Y-%m-%d').isin(joanne.time.dt.strftime('%Y-%m-%d')),drop=True)[var].mean('time').plot(y='z',ls='--',c=col[idx*3],lw=2,label='Flights')
-        if group_by =='groups':
-            for key in profiles_daily_clusteres['group_shear'].values:
-                profiles_daily_clusteres.sel(group_shear=key)[var].plot(y='z',c=col[idx*3+key],lw=1,label='Group '+str(key))
-            title = 'Groups by wind shear'
-            plt.title(title)
-        if group_by == 'day_night':
-            hrs_to_plot_day[var].mean('time').plot(y='z',c=col[idx*3+1],lw=1, label=str(day_interval)+' UTC')
-            hrs_to_plot_night[var].mean('time').plot(y='z',c=col[idx*3+2],lw=1, label=str(night_interval)+' UTC')
-    # if var in nudge:
-    #     nudge[var].mean('time').plot(y='z',c=adjust_lightness(col[idx]),lw=0.8,label='HARMONIE '+var)
+        hrs_to_plot[var].mean('time').plot(y='z',c=col[idx*3],lw=3, label='DALES '+var)
+        harm_toplot[var].mean('time').plot(y='z',c=col[idx*3],lw=3,ls='--', label='HARMONIE '+var)
+    #     if group_by == 'flights':
+    #         profiles.where(profiles.time.dt.strftime('%Y-%m-%d').isin(joanne.time.dt.strftime('%Y-%m-%d')),drop=True)[var].mean('time').plot(y='z',ls='--',c=col[idx*3],lw=2,label='Flights')
+    #     if group_by =='groups':
+    #         for key in profiles_daily_clusteres['group_shear'].values:
+    #             profiles_daily_clusteres.sel(group_shear=key)[var].plot(y='z',c=col[idx*3+key],lw=1,label='Group '+str(key))
+    #         title = 'Groups by wind shear'
+    #         plt.title(title)
+    #     if group_by == 'day_night':
+    #         hrs_to_plot_day[var].mean('time').plot(y='z',c=col[idx*3+1],lw=1, label=str(day_interval)+' UTC')
+    #         hrs_to_plot_night[var].mean('time').plot(y='z',c=col[idx*3+2],lw=1, label=str(night_interval)+' UTC')
+    # # if var in nudge:
+    # #     nudge[var].mean('time').plot(y='z',c=adjust_lightness(col[idx]),lw=0.8,label='HARMONIE '+var)
+   
+    
+       
+    plt.title('Winds')
     plt.legend()
     plt.xlabel('m/s')
     plt.axvline(0,c='k',lw=0.5)
     plt.ylim(height_lim)
-    plt.xlim([-12.5,0.5])
-    plt.savefig(save_dir+'mean_winds.pdf')
-    
+    plt.xlim([-10,1.5])
+    plt.savefig(save_dir+'poster_mean_winds.pdf', bbox_inches="tight")
+ 
+    #%%
     ## momentum fluxes
     plt.figure(figsize=(6,9))
     plt.suptitle('Momentum fluxes')
@@ -741,7 +769,7 @@ for group_by in ['groups']:
     plt.xlabel('Momentum flux (m2/s2)')
     plt.axvline(0,c='k',lw=0.5)
     plt.ylim(height_lim)
-    plt.savefig(save_dir+'mean_momflux.pdf')
+    # plt.savefig(save_dir+'mean_momflux.pdf')
         
     ## counter gradient fluxes
     plt.figure(figsize=(6,9))
@@ -749,27 +777,27 @@ for group_by in ['groups']:
     for idx,var in enumerate(['u','v']):
         (hrs_to_plot[var+'wt'] * hrs_to_plot['d'+var+'_dz']).mean('time').\
             plot(y='z',c=col[idx*3],lw=2,label=var+'w d'+var+'_dz')
-        if group_by == 'flights':
-            (profiles[var+'wt'] * profiles['d'+var+'_dz']).where(profiles.time.dt.strftime('%Y-%m-%d')\
-                        .isin(joanne.time.dt.strftime('%Y-%m-%d')),drop=True)\
-                .mean('time').plot(y='z',ls='--',c=col[idx*3],lw=2,label='Flights')
-        if group_by =='groups':
-            for key in profiles_daily_clusteres['group_shear'].values:
-                (profiles_daily_clusteres[var+'wt'] * profiles_daily_clusteres['d'+var+'_dz'])\
-                    .sel(group_shear=key).plot(y='z',c=col[idx*3+key],lw=1,label='Group '+str(key))
-                plt.title('Groups by wind shear')
+        # if group_by == 'flights':
+        #     (profiles[var+'wt'] * profiles['d'+var+'_dz']).where(profiles.time.dt.strftime('%Y-%m-%d')\
+        #                 .isin(joanne.time.dt.strftime('%Y-%m-%d')),drop=True)\
+        #         .mean('time').plot(y='z',ls='--',c=col[idx*3],lw=2,label='Flights')
+        # if group_by =='groups':
+        #     for key in profiles_daily_clusteres['group_shear'].values:
+        #         (profiles_daily_clusteres[var+'wt'] * profiles_daily_clusteres['d'+var+'_dz'])\
+        #             .sel(group_shear=key).plot(y='z',c=col[idx*3+key],lw=1,label='Group '+str(key))
+        #         plt.title('Groups by wind shear')
 
-        if group_by == 'day_night':
-            (hrs_to_plot_day[var+'wt'] * hrs_to_plot_day['d'+var+'_dz']).mean('time').\
-                plot(y='z',c=col[idx*3+1],lw=1,label=str(day_interval)+' UTC')
-            (hrs_to_plot_night[var+'wt'] * hrs_to_plot_night['d'+var+'_dz']).mean('time').\
-                plot(y='z',c=col[idx*3+2],lw=1,label=str(night_interval)+' UTC')
+        # if group_by == 'day_night':
+        #     (hrs_to_plot_day[var+'wt'] * hrs_to_plot_day['d'+var+'_dz']).mean('time').\
+        #         plot(y='z',c=col[idx*3+1],lw=1,label=str(day_interval)+' UTC')
+        #     (hrs_to_plot_night[var+'wt'] * hrs_to_plot_night['d'+var+'_dz']).mean('time').\
+        #         plot(y='z',c=col[idx*3+2],lw=1,label=str(night_interval)+' UTC')
     plt.legend()
     plt.axvline(0,c='k',lw=0.5)
     plt.ylim(height_lim)
     plt.xlim([-0.00012,None])
     plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
-    plt.savefig(save_dir+'mean_gradTransp.pdf')
+    # plt.savefig(save_dir+'mean_gradTransp.pdf')
     
     ## Momentum flux convergence
     plt.figure(figsize=(6,9))
@@ -787,41 +815,148 @@ for group_by in ['groups']:
     plt.xlim([-0.0001,0.0002])
     plt.xlabel('m/s2')
     plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
-    plt.savefig(save_dir+'mean_momfluxconv.pdf')
+    # plt.savefig(save_dir+'mean_momfluxconv.pdf')
     
+#%% momentum fluxes grouped by u variance 
+days = ['2020-02-02','2020-02-03T23:50']
+hrs_to_plot = profiles.where(profiles.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
+fig, axs = plt.subplots(1,2,figsize=(12,12))
+plt.suptitle('Momentum fluxes')
+for idx,var in enumerate(['u','v']):
+    axs[idx].plot(profiles[var+'wt'].sel(time=slice(days[0],days[1])).mean('time'),profiles['z'],\
+                  c='r',ls='-',lw=3,label='Tot DALES')
+    # axs[idx].plot(profiles[var+'wt'].sel(time=time_u2r_Q1.sel(time=slice(days[0],days[1]))).mean('time'),profiles['z'],\
+    #               c='b',ls='-',label='Low u variance')
+    # axs[idx].plot(profiles[var+'wt'].sel(time=time_u2r_Q3.sel(time=slice(days[0],days[1]))).mean('time'),profiles['z'],\
+    #               c='r',ls='-',label='High u variance')
+        
+    ### from HARMONIE
+    axs[idx].plot(((harm_clim_avg[var+'flx_conv']+harm_clim_avg[var+'flx_turb']) + \
+          dl_geo.interp(z=harm_clim_avg['z'])[var+'p_wp'])\
+              .sel(time=slice(days[0],days[1])).mean('time'),harm_clim_avg.z,\
+              ls='--',c='r',lw=3,label='Tot HARMONIE')
+        
+    axs[idx].plot(harm_clim_avg[var+'flx_conv']\
+              .sel(time=slice(days[0],days[1])).mean('time'),harm_clim_avg.z,\
+              ls='--',c='b',lw=2,label='HARMONIE conv')
+    axs[idx].plot(harm_clim_avg[var+'flx_turb']\
+              .sel(time=slice(days[0],days[1])).mean('time'),harm_clim_avg.z,\
+              ls='--',c='c',lw=2,label='HARMONIE turb')
+    axs[idx].plot((dl_geo.interp(z=harm_clim_avg['z'])[var+'p_wp'])\
+              .sel(time=slice(days[0],days[1])).mean('time'),harm_clim_avg.z,\
+              ls='--',c='k',lw=2,label='HARMONIE resolved')
+        
+        
+    axs[idx].axvline(0,c='k',lw=0.5)
+    axs[0].legend(fontsize=15)
+    axs[idx].set_xlabel('Momentum flux (m2/s2)')
+    axs[idx].set_title(var +'flux',fontsize=24)
+
+    axs[idx].set_ylim(height_lim)
+# plt.savefig(save_dir+'mean_momflux_byu2r.pdf')
+
+         # !!!!!
+
+
 #%%  TIMESERIES
 ## momentum fluxes
-for var in ['uwt','vwt']:
-    plt.figure(figsize=(19,5))
-    plt.suptitle('Momentum flux')
-    (profiles[var]).plot(y='z',vmin=-0.13)
+for var in ['uwt']:
+    fig, axs = plt.subplots(figsize=(19,5))
+    # plt.suptitle('Meridional momentum flux and near-surface variance')
+    # (profiles[var]*xr.ufuncs.sign(profiles[var[0]])).plot(y='z',vmax=0.1)
+    (profiles[var]).plot(y='z',vmax=0.1,vmin=-0.07,cmap=cm.PiYG_r,norm=DivergingNorm(0))
     plt.ylim(height_lim)
     plt.xlim([srt_time,end_time])
+    # plt.xlim(['2020-02-02T22','2020-02-05T02'])
+    tmser.zc_max.rolling(time=30, center=True).mean().plot(c='b',ls='-',lw=1)
     for ii in np.arange(srt_time, end_time):
         plt.axvline(x=ii,c='k')
-    # plt.savefig(save_dir+'Figures/tmser_'+var+'.pdf')
+
+    
+        
+    # ax2 = axs.twinx()
+    # profiles[var[0]+'2r'].sel(z=slice(0,200)).mean('z').plot(x='time',ax=ax2,c='k',label = r'$\sigma^2$'+var[0])
+    # ax2.set_ylim([-0,13])
+    # profiles.v2r.sel(z=slice(0,200)).mean('z').plot(x='time',ax=ax2,c='k')
+    # profiles.rainrate.sel(z=slice(0,200)).mean('z').plot(x='time',ax=axs,c='b',label='Rain')
+    # ax2.set_ylabel('$\sigma^2$'+var[0]+' [$m^2 / s^2$]')
+    axs.set_ylabel('z [m]')
+    axs.set_xlabel(None)
+    fig.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=axs.transAxes)
+    plt.savefig(save_dir+'poster_DALES_tmser_'+var+'_2days.pdf', bbox_inches="tight")
+
+#%%
+dl_geo = xr.open_mfdataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/HARMONIE/cy43_clim/my_3d_harm_clim_lev_.nc',combine='by_coords')
+step = 3600 # output timestep [seconds]
+for var in ['uflx_conv','uflx_turb']:
+    dl_geo[var] = (dl_geo[var].diff('time')) * step**-1  # gives values per second
+## HARMONIE
+for var in ['u']:
+    # fig, axs = plt.subplots(figsize=(19,5))
+    # (harm_clim_avg[var+'flx_conv']+harm_clim_avg[var+'flx_turb']).\
+    #     isel(time=slice(37,48)).sel(z=slice(0,4500)).\
+    #     plot(cmap=cm.PiYG_r,x='time',\
+    #                   vmax=0.03,vmin=-0.015,norm=DivergingNorm(0))
+    # # for ii in np.arange(srt_time, end_time):
+    # #     plt.axvline(x=ii,c='k')
+    # plt.suptitle('Param '+var+' momentum flux form HARMONIE')
+   
+    # plt.figure(figsize=(19,5))
+    # dl_geo.sel(z=slice(0,4500))[var+'p_wp'].plot(y='z',\
+    #                           cmap=cm.PiYG_r,\
+    #                           vmax=None,vmin=None,norm=DivergingNorm(0))
+    # plt.suptitle('Resolved '+var+' momentum flux form HARMONIE')
+    # for ii in np.arange(srt_time, end_time):
+    #     plt.axvline(x=ii,c='k')
+    # plt.xlim(['2020-02-02T22','2020-02-05T02'])
+    
+    plt.figure(figsize=(19,5))
+    ((harm_clim_avg[var+'flx_conv']+harm_clim_avg[var+'flx_turb']) + \
+         dl_geo.interp(z=harm_clim_avg['z'])[var+'p_wp']).sel(z=slice(0,4500))\
+   .plot(y='z',\
+                              cmap=cm.PiYG_r,\
+                             vmax=0.1,vmin=-0.07,norm=DivergingNorm(0),cbar_kwargs={'label': '$m^2/s^2$'})
+    # plt.suptitle('Total '+var+' momentum flux from HARMONIE')
+    plt.plot(dl_geo.time,cl_max[:len(dl_geo.time)],c='b',ls='-',lw=1)
+    plt.ylim(height_lim)
+
+    for ii in np.arange(srt_time, end_time):
+        plt.axvline(x=ii,c='k')
+    # plt.xlim(['2020-02-02T22','2020-02-05T02'])
+    plt.savefig(save_dir+'poster_HARM_tmser_'+var+'w_2days.pdf', bbox_inches="tight")
 
 #%% CLOUD LAYER timeseries
 exp_prof  = profiles
 exp_tmser = tmser
 
 plt.figure(figsize=(19,5))
-exp_prof.cfrac.plot(y="z",cmap=plt.cm.Blues_r,vmax=0.005,vmin=0)
+exp_prof.cfrac.sel(time='2020-02-03').plot(y="z",cmap=plt.cm.Blues_r,vmax=0.005,vmin=0)
 exp_tmser.zc_max.rolling(time=30, center=True).mean().plot(c='r',ls='-')
 exp_tmser.zc_av.plot(c='r',ls='--')
 # exp_tmser.zb.plot(c='k')
 plt.ylim([0,8000])
-for tm in np.arange(srt_time, end_time):
-    plt.axvline(x=tm,c='k')
+plt.title('DALES',fontsize = 21)
+plt.ylabel('z [m]')
+plt.xlabel('')
+plt.xlim(['2020-02-03','2020-02-04'])
+plt.axvline(x=np.datetime64('2020-02-03T12'),c='k')
+# for tm in np.arange(srt_time, end_time):
+#     plt.axvline(x=tm,c='k')
+# plt.savefig(save_dir+'tmser_clfrac_DALES.pdf', bbox_inches="tight")
     
 plt.figure(figsize=(19,5))
-harm_clim_avg.cl.plot(x='time',cmap=plt.cm.Blues_r,vmax=0.005,vmin=0)
+harm_clim_avg.cl.sel(time='2020-02-03').plot(x='time',cmap=plt.cm.Blues_r,vmax=0.05,vmin=0)
 exp_tmser.zc_max.rolling(time=30, center=True).mean().plot(c='r',ls='-')
 exp_tmser.zc_av.plot(c='r',ls='--')
-plt.ylim([0,7000])
-plt.xlim([None,'2020-02-11'])
-for tm in np.arange(srt_time, end_time):
-    plt.axvline(x=tm,c='k')
+plt.ylim([0,8000])
+plt.xlim(['2020-02-03','2020-02-04'])
+plt.title('HARMONIE',fontsize = 21)
+plt.ylabel('z [m]')
+plt.xlabel('')
+plt.axvline(x=np.datetime64('2020-02-03T12'),c='k')
+# for tm in np.arange(srt_time, end_time):
+#     plt.axvline(x=tm,c='k')
+# plt.savefig(save_dir+'tmser_clfrac_HARMONIE.pdf', bbox_inches="tight")
 #%%
 ## Difference HARMONIE hind - DALES
 exp_prof = profiles
@@ -840,8 +975,8 @@ exp_tend = samptend
 ####################
     
 acc_time = 3600*1
-# for ii in ['thl','qt','ql','wspd']:
-for ii in ['qttendlsall','utendlsall']:
+for ii in ['thl','qt','ql','wspd']:
+# for ii in ['qttendlsall','utendlsall']:
     if ii == 'qt': 
         vmax = 0.005
         unit = 'kg/kg'
@@ -912,7 +1047,10 @@ for ii in ['u','v','T','qt','dtT_dyn','dtqt_dyn','dtu_dyn','dtv_dyn']:
         plt.axvline(x=tm,c='k')        
         
 #%% CONTOUR for VARIABLES (any model)
-for var in ['u','qt','T']:
+# profiles['uwr_sign']=profiles.uwr*(-1* np.sign(profiles.u))
+# profiles['vwr_sign']=profiles.vwr*(-1* np.sign(profiles.v))
+
+for var in ['u','qt','uwr']:
     unit = 1
     vmin = None
     vmax = None
@@ -929,12 +1067,16 @@ for var in ['u','qt','T']:
     elif var == 'u':
         vmin = -14
         vmax = 1
+    elif 'uw' in var:
+        vmin = -0.06
+        vmax = 0.08
+
     plt.figure(figsize=(19,5))
-    # (unit*profiles[var]).plot(x="time",vmin=vmin,vmax=vmax)
+    (unit*profiles[var]).plot(x="time",vmin=vmin,vmax=vmax,cmap='bwr')
     # (unit*harm_hind_avg['300'][var]).plot(x="time",vmin=vmin,vmax=vmax)
-    (unit*harm_clim_avg[var]).plot(x="time",vmin=vmin,vmax=vmax)
+    # (unit*harm_clim_avg[var]).plot(x="time",vmin=vmin,vmax=vmax)
     plt.ylim([0,5000])
-    plt.title('HARMONIE clim '+var, size=20)
+    plt.title('Resolved zonal momentum flux '+var, size=20)
     for ii in np.arange(srt_time, end_time):
             plt.axvline(x=ii,c='k',lw=0.5)
 
@@ -952,8 +1094,8 @@ for ii in ['qt', 'thl','u','v']:
         unit = 1
         vmax = 1.5
     plt.figure(figsize=(19,5))
-    # (unit*3600*ls_flux['d'+ii+'dt']).plot(x='time',vmax=vmax)
-    (unit*3600*harm_hind_avg['300']['dt'+ii+'_dyn']).plot(x='time',vmax=vmax)
+    (unit*3600*ls_flux['d'+ii+'dt']).plot(x='time',vmax=vmax)
+    # (unit*3600*harm_hind_avg['300']['dt'+ii+'_dyn']).plot(x='time',vmax=vmax)
     # plt.gca().set_prop_cycle(None)
     # (unit*3600*24*samptend.qttendlsall).plot(x='time')
     plt.ylim([0,6000])
@@ -969,31 +1111,32 @@ for ii in ['qt', 'thl','u','v']:
 #%%
 ### OBS AND MODELS TOGETHER
 if comp_observations:
-    for level in [1000]: # meters
-        for var in ['thl','qt','wspd']:
+    for level in [300]: # meters
+        for var in ['wspd']:
             ## Temperature    
             plt.figure(figsize=(15,6))
-            plt.plot(profiles.time,profiles[var].sel(z=level,method='nearest'),c=col[3],label='DALES')
+            plt.plot(profiles.time,profiles[var].sel(z=level,method='nearest'),lw=2.5,c=col[3],label='DALES')
             if comp_experiments:
                 plt.plot(prof_isurf5.time,prof_isurf5[var].sel(z=level,method='nearest'),c=col[5],label='isurf5')
                 # plt.plot(profiles_clim.time,profiles_clim[var].sel(z=level,method='nearest'),c=col[5],label='DALES clim')
-            plt.plot(harm_hind_avg['300'].time,harm_hind_avg['300'][var].sel(z=level,method='nearest'),c=col[0],label='HARMONIE cy40')
+            # plt.plot(harm_hind_avg['300'].time,harm_hind_avg['300'][var].sel(z=level,method='nearest'),c=col[0],label='HARMONIE cy40')
             if var in ds_obs['drop']:
                 plt.scatter((ds_obs['drop'].launch_time  + np.timedelta64(4, 'h')).values,\
                         ds_obs['drop'].sel(Height=level,method='nearest').sel(launch_time=slice(srt_time,end_time))[var].values,c=col[2],alpha = 0.5,s=12,label='Dropsondes')
             if var in ds_obs['radio']:
                 plt.scatter((ds_obs['radio'].launch_time + np.timedelta64(4, 'h')).values,\
                         ds_obs['radio'].sel(Height=level,method='nearest').sel(launch_time=slice(srt_time,end_time))[var].values,c=col[6],alpha = 0.5,s=12,label='Radiosondes')
-            if var in era5:
-                plt.plot(era5.Date.sel(Date=slice(srt_time,end_time)),era5[var].sel(Height=level,method='nearest').sel(Date=slice(srt_time,end_time)).mean('Mypoint'), label='ERA5')
             if harm_3d:
-                plt.plot(harm_clim_avg.time,harm_clim_avg[var].sel(z=level,method='nearest'),c=col[8],label='HARMONIE cy43 clim')
-            plt.xlabel('time')
-            plt.ylabel(var)
-            plt.title( var+' at '+str(level)+' m',size=20)
+                plt.plot(harm_clim_avg.time,harm_clim_avg[var].sel(z=level,method='nearest'),lw=2.5,c=col[0],label='HARMONIE cy43')
+            if var in era5:
+                plt.plot(era5.Date.sel(Date=slice(srt_time,end_time)),era5[var].sel(Height=level,method='nearest').sel(Date=slice(srt_time,end_time)).mean('Mypoint'),\
+                         ls='-',c=col[8], label='ERA5')
+            # plt.xlabel('time')
+            plt.ylabel('z [m/s]')
+            plt.title('Wind speed at '+str(level)+' m',size=20)
             plt.xlim(temp_hrs)
             plt.axvspan(srt_time,srt_time + np.timedelta64(2, 'h'), alpha=0.2, color='grey')
-            plt.legend()
+            plt.legend(fontsize=15)
             for day in np.arange(srt_time,end_time):
                 plt.axvline(x=day,c='k',lw=0.5)
         # plt.savefig(save_dir+'wspd.pdf')
@@ -1001,45 +1144,47 @@ if comp_observations:
 #%%
     ### SURFACE LATENT HEAT FLUX 
     plt.figure(figsize=(15,6))
-    plt.plot(tmser.time, ls_surf['rho'].mean() * tmser.wq * Lv,c=col[1],lw=0.9,label='DALES')
+    plt.plot(tmser.time, ls_surf['rho'].mean() * tmser.wq * Lv,lw=2.5,c=col[3],label='DALES')
     if comp_experiments:
         plt.plot(tmser_isurf5.time, ls_surf['rho'].mean() * tmser_isurf5.wq * Lv,c=col[5],lw=0.7,label='DALES exp')
     # harm_hind_avg['300'].LE.plot()
-    harm_clim_avg.hfls.mean(dim=['x','y']).plot(c=col[6],lw=2,label='HARMONIE_cy43 clim')
-    xr.plot.scatter(Meteor,'time','LHF_bulk_mast',alpha = 0.6,s=10,c=col[2],label='Meteor')
-    xr.plot.scatter(Meteor,'time','LHF_EC_mast',alpha = 0.4,s=10,label='EC')
+    harm_clim_avg.hfls.mean(dim=['x','y']).plot(lw=2.5,c=col[0],label='HARMONIE cy43')
+    xr.plot.scatter(Meteor,'time','LHF_bulk_mast',alpha = 0.6,s=12,c=col[2],label='Meteor')
+    xr.plot.scatter(Meteor,'time','LHF_EC_mast',alpha = 0.4,s=12,label='EC')
     plt.xlabel('time')
     plt.ylabel('LH (W/m2)')
     plt.title('Surface latent heat flux',size=20)
     plt.xlim(temp_hrs)
     plt.axvspan(srt_time,srt_time + np.timedelta64(2, 'h'), alpha=0.2, color='grey')
-    plt.legend()
+    plt.legend(fontsize=15)
     for day in np.arange(srt_time,end_time):
         plt.axvline(x=day,c='k',lw=0.5)
+    plt.savefig(save_dir+'LatentHeat_srf.pdf', bbox_inches="tight")
         
     ### SURFACE SENSIBLE HEAT FLUX
     plt.figure(figsize=(15,6))
-    plt.plot(tmser.time, rho * tmser.wtheta * cp,c=col[1],lw=0.7,label='DALES')
+    plt.plot(tmser.time, rho * tmser.wtheta * cp,lw=2.5,c=col[3],label='DALES')
     if comp_experiments:
         plt.plot(tmser_isurf5.time, rho * tmser_isurf5.wtheta * cp,c=col[5],lw=0.9,label='DALES exp')
-    harm_hind_avg['300'].H.plot(c=col[0],lw=2,label='HARMONIE_cy40 hind')
-    harm_clim_avg.hfss.mean(dim=['x','y']).plot(c=col[6],lw=2,label='HARMONIE_cy43 clim')
-    xr.plot.scatter(Meteor,'time','SHF_bulk_mast',alpha = 0.6,s=10,c=col[2],label='Meteor')
-    xr.plot.scatter(Meteor,'time','SHF_EC_mast',alpha = 0.4,s=10,label='EC')
+    # harm_hind_avg['300'].H.plot(c=col[0],lw=2,label='HARMONIE_cy40 hind')
+    harm_clim_avg.hfss.mean(dim=['x','y']).plot(lw=2.5,c=col[0],label='HARMONIE cy43')
+    xr.plot.scatter(Meteor,'time','SHF_bulk_mast',alpha = 0.6,s=12,c=col[2],label='Meteor')
+    xr.plot.scatter(Meteor,'time','SHF_EC_mast',alpha = 0.4,s=12,label='EC')
     plt.xlabel('time')
     plt.ylabel('SH ($W/m^2$)')
     plt.title('Surface sensible heat flux',size=20)
     plt.xlim(temp_hrs)
     plt.axvspan(srt_time,srt_time + np.timedelta64(2, 'h'), alpha=0.2, color='grey')
-    plt.legend()
+    plt.legend(fontsize=15)
     for day in np.arange(srt_time,end_time):
         plt.axvline(x=day,c='k',lw=0.5)
+    plt.savefig(save_dir+'SensHeat_srf.pdf', bbox_inches="tight")
         
     # flux profiles
-    plt.figure(figsize=(10,9))
-    (profiles.rhof * profiles.wqtt * Lv).plot(y='z',vmin=0,vmax=+500, cmap='coolwarm')
-    plt.ylim([0,4000])
-    plt.title('Latent heat flux',size=20)
+    # plt.figure(figsize=(10,9))
+    # (profiles.rhof * profiles.wqtt * Lv).plot(y='z',vmin=0,vmax=+500, cmap='coolwarm')
+    # plt.ylim([0,4000])
+    # plt.title('Latent heat flux',size=20)
     # plt.figure(figsize=(10,9))
     # # sensible heat flux uses theta not thetaV
     # (profiles.rhof * profiles.wthvt * cp).plot(y='z',vmin=0,vmax=+40, cmap='coolwarm')
@@ -1167,21 +1312,21 @@ plt.ylabel('Tot tendency (m/s /hour)')
 plt.xlabel('LS tendency (m/s /hour)')
 plt.title(model+': '+var+' in layer '+str(layer),size=20)
 #%% time series of tendencies
-layer = [0,750]
-var = 'v'
-rol = 4
-composite = True
+layer = [800,1200]
+var = 'u'
+rol = 10
+composite = False
 acc_time = 3600*1
 
 dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).mean('z')\
-    .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-09')))
+    .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
 h_clim_to_plot = harm_clim_avg.sel(z=slice(layer[0],layer[1])).mean('z')\
-    .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-09')))
+    .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
 
 plt.figure(figsize=(15,6))
 if composite:
     ## DALES
-    acc_time*dales_to_plot.groupby(dales_to_plot.time.dt.hour).mean()[var+'tendtotall'].plot(c='r',label='DALES: Tot')
+    3600*acc_time*dales_to_plot.groupby(dales_to_plot.time.dt.hour).mean()[var+'tendtotall'].plot(c='r',label='DALES: Tot')
     acc_time*dales_to_plot.groupby(dales_to_plot.time.dt.hour).mean()[var+'tendlsall'].plot(c='k', label='DALES: LS')
     acc_time*dales_to_plot.groupby(dales_to_plot.time.dt.hour).mean()[var+'tendphyall'].plot(c='c',label='DALES: Tot - LS')
     
@@ -1195,14 +1340,14 @@ if composite:
     
 else:
     ## DALES 
-    acc_time*dales_to_plot.rolling(time=rol).mean()[var+'tendtotall'].plot(c='r',label='DALES: Tot')
-    acc_time*dales_to_plot.rolling(time=rol).mean()[var+'tendlsall'].plot(c='k', label='DALES: LS')
-    acc_time*dales_to_plot.rolling(time=rol).mean()[var+'tendphyall'].plot(c='c',label='DALES: Tot - LS')
+    (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendtotall']).plot(c='r',label='DALES: Net')
+    (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendlsall']).plot(c='k', label='DALES: LS')
+    (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendphyall']).plot(c='g',label='DALES: Net - LS')
     
     ## HARMONIE cy43 clim
-    acc_time*(h_clim_to_plot['dt'+var+'_dyn']+h_clim_to_plot['dt'+var+'_phy']).plot(c='r',ls=':',label='H.clim cy43: Tot')
-    acc_time*h_clim_to_plot['dt'+var+'_dyn'].plot(c='k',ls=':',label='H.clim cy43: Dyn')
-    acc_time*h_clim_to_plot['dt'+var+'_phy'].plot(c='c',ls=':',label='H.clim cy43: Phy')
+    (acc_time*(h_clim_to_plot['dt'+var+'_dyn']+h_clim_to_plot['dt'+var+'_phy']).rolling(time=rol).mean()).plot(c='r',ls=':',label='HAR: Net')
+    (acc_time*h_clim_to_plot['dt'+var+'_dyn'].rolling(time=rol).mean()).plot(c='k',ls=':',label='HAR: Dyn')
+    (acc_time*h_clim_to_plot['dt'+var+'_phy'].rolling(time=rol).mean()).plot(c='g',ls=':',label='HAR: Phy')
 
     for day in np.arange(srt_time,end_time):
         plt.axvline(x=day,c='k',lw=0.5)
@@ -1215,12 +1360,13 @@ if var == 'thl':
     plt.ylim([-0.00005, 0.00005]) 
     plt.ylabel('Tendency (K /hour)')
 elif var == 'qt':
-    plt.ylim([-0.0000001, 0.0000001]) 
+    plt.ylim([-0.001, 0.001]) 
     plt.ylabel('Tendency (g/kg /hour)')
 else:
-    plt.ylim([-0.0002,0.0002])
+    plt.ylim([-0.85,0.8])
     plt.ylabel('Tendency (m/s /hour)')
-    
+plt.xlim(temp_hrs)
+plt.savefig(save_dir+'tmser_'+var+'tend_rol'+str(rol)+'.pdf', bbox_inches="tight")
 
 #%% TAKE INTO ACCOUNT SIGN OF THE WIND COMPONENTS !!
 
@@ -1237,7 +1383,13 @@ else:
 exp_tend = samptend
 
 #%%    
-days = ['2020-02-02','2020-02-05','2020-02-06','2020-02-07']
+days = ['2020-02-03T13','2020-02-03T14','2020-02-03T15']
+# days = ['2020-02-03T14']
+# days = ['2020-02-03T12','2020-02-03T13','2020-02-03T14',
+#     '2020-02-03T15','2020-02-03T16','2020-02-03T17',\
+#         '2020-02-03T18','2020-02-03T19','2020-02-03T20','2020-02-03T21','2020-02-03T22','2020-02-03T23']
+# days = ['2020-02-02','2020-02-03','2020-02-04','2020-02-05','2020-02-06','2020-02-07',\
+#         '2020-02-08','2020-02-09','2020-02-10','2020-02-11']
 h_hind_to_plot = {}
 cond_sampl = ['all']
 for ii in ['days']:
@@ -1249,8 +1401,11 @@ for ii in ['days']:
             h_hind_to_plot[avg] = harm_hind_avg[avg].sel(time=slice(temp_hrs[0]+np.timedelta64(2,'h'),temp_hrs[1]-np.timedelta64(26,'h')))
         title='Domain and Temporal mean'
     elif ii == 'days':
-        tend_to_plot   = exp_tend.where(exp_tend.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
-        h_clim_to_plot = harm_clim_avg.where(harm_clim_avg.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
+        tend_to_plot   = exp_tend.where(exp_tend.time.dt.strftime('%Y-%m-%dT%H').isin(days),drop=True)
+        # h_clim_to_plot = harm_clim_avg.where(harm_clim_avg.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
+        h_clim_to_plot = harm_clim_avg.where(harm_clim_avg.time.isin(tend_to_plot.time,),drop=True)
+        tend_to_plot = tend_to_plot.sel(time=h_clim_to_plot.time)
+        
         ls_flux_toplot = ls_flux.where(ls_flux.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
         for avg in harm_avg_domains:
             h_hind_to_plot[avg] = harm_hind_avg[avg].where(harm_hind_avg[avg].time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
@@ -1295,11 +1450,11 @@ for ii in var:
         if ii == 'qt': unit = 1000
         else: unit = 1
         axs[temp].plot(unit*acc_time*tend_to_plot[ii+'tendls'+samp].\
-                    mean('time'),tend_to_plot.z,c='k',label='Large scale')
-        axs[temp].plot(unit*acc_time*tend_to_plot[ii+'tendadv'+samp].\
-                    mean('time'),tend_to_plot.z,c='b',label='Advective')
-        axs[temp].plot(unit*acc_time*tend_to_plot[ii+'tenddif'+samp].\
-                    mean('time'),tend_to_plot.z,c='g',label='Diffusive') 
+                    mean('time'),tend_to_plot.z,c='k',label='LS dynamics',lw=2)
+        # axs[temp].plot(unit*acc_time*tend_to_plot[ii+'tendadv'+samp].\
+        #             mean('time'),tend_to_plot.z,c='b',label='Advective')
+        # axs[temp].plot(unit*acc_time*tend_to_plot[ii+'tenddif'+samp].\
+        #             mean('time'),tend_to_plot.z,c='g',label='Diffusive') 
         # axs[temp].plot(unit*acc_time*tend_to_plot[ii+'tendfor'+samp].\
         #             mean('time'),tend_to_plot.z,c='orange',label='Other') 
         # if ii =='u' or ii=='v':
@@ -1325,11 +1480,11 @@ for ii in var:
                         mean('time'),tend_to_plot.z,c='c',label='Net - LS (sum)')
         else:
             axs[temp].plot(unit*acc_time*tend_to_plot[ii+'tendtot'+samp].\
-               mean('time'),tend_to_plot.z,c='r',label='Net')
+               mean('time'),tend_to_plot.z,c='r',label='Net',lw=2)
             # axs[temp].plot(unit*acc_time*(tend_to_plot[ii+'tendtot'+samp] - tend_to_plot[ii+'tendls'+samp]).\
             #             mean('time'),tend_to_plot.z,c='c',label='Net - LS')
             axs[temp].plot(unit*acc_time*(tend_to_plot[ii+'tendadv'+samp] + tend_to_plot[ii+'tenddif'+samp]).\
-                        mean('time'),tend_to_plot.z,c='c',label='Adv + Dif')
+                        mean('time'),tend_to_plot.z,c='g',label='Resolved +\nsub-grid')
         # if ii =='thl' or ii=='qt':
         #     axs[temp].plot(unit*acc_time*tend_to_plot[ii+'tendmicro'+samp].\
         #             mean('time'),tend_to_plot.z,c='orange',label='Microphysics') 
@@ -1353,16 +1508,17 @@ for ii in var:
 
     # ## HARMONIE cy43 clim
     # axs[temp].plot(unit*acc_time*h_clim_to_plot['dt'+ii+'_dyn'].\
-    #             mean('time'),h_clim_to_plot['z'],c='k',ls=':',lw=2,label='H.clim dyn') 
-    axs[temp].plot(unit*acc_time*h_clim_to_plot['dt'+ii+'_phy'].\
-                mean('time'),h_clim_to_plot['z'],c='c',ls=':',lw=2,label='H.clim phy')
-    axs[temp].plot(unit*acc_time*(h_clim_to_plot['dt'+ii+'_phy']+h_clim_to_plot['dt'+ii+'_dyn']).\
-                mean('time'),h_clim_to_plot['z'],c='r',ls=':',lw=2,label='H.clim net')
+    #             mean('time'),h_clim_to_plot['z'],c='k',ls='--',lw=2,label='Resolved dyn') 
+    # axs[temp].plot(unit*acc_time*(h_clim_to_plot['dt'+ii+'_phy']+h_clim_to_plot['dt'+ii+'_dyn']).\
+    #             mean('time'),h_clim_to_plot['z'],c='r',ls='--',lw=2,label='Net')
+    # axs[temp].plot(unit*acc_time*h_clim_to_plot['dt'+ii+'_phy'].\
+    #             mean('time'),h_clim_to_plot['z'],c='g',ls='--',lw=2,label='Param. phy')
+
     if ii == 'u' or ii == 'v':
         axs[temp].plot(unit*acc_time*h_clim_to_plot['dt'+ii+'_turb'].\
-            mean('time'),h_clim_to_plot['z'],c='g',ls=':',lw=2,label='H.clim turb')
+            mean('time'),h_clim_to_plot['z'],c='c',ls='--',lw=1,label='H.clim turb')
         axs[temp].plot(unit*acc_time*h_clim_to_plot['dt'+ii+'_conv'].\
-            mean('time'),h_clim_to_plot['z'],c='b',ls=':',lw=2,label='H.clim conv')
+            mean('time'),h_clim_to_plot['z'],c='b',ls='--',lw=1,label='H.clim conv')
     
     
     ## OBS
@@ -1376,7 +1532,7 @@ for ii in var:
                             mean('time'),joanne['Height'],c='r',ls='-.',label='Joanne net')
         
     axs[temp].set_title(ii+' tendency',size=20)
-    # axs[temp].set_title('Zonal momentum budget',size=15)
+    # axs[temp].set_title('Zonal momentum budget',size=18)
     axs[temp].axvline(0,c='k',lw=0.5)
     
     axs[temp].set_ylim(height_lim)
@@ -1392,16 +1548,17 @@ for ii in var:
 
         # axs[temp].legend(frameon=False)
     else:
-        axs[temp].set_xlabel('(m/s^2 / hour)')
+        axs[temp].set_xlabel(r'($m/s^2$ / hour)',fontsize=18)
         if samp == 'all':
-            axs[temp].set_xlim([-0.5,+0.5])
-        else: 
-            axs[temp].set_xlim([-9,+11])
-        if ii=='v':
-            axs[temp].legend(frameon=False)
+            axs[temp].set_xlim([-0.45,+0.68])
+            # axs[temp].legend(frameon=False)
+        # else: 
+        #     axs[temp].set_xlim([-9,+11])
+        # if ii=='u':
+        #     axs[temp].legend(frameon=False)
     temp+=1
     
-# plt.savefig(save_dir+'tendency_05_Feb.pdf')
+plt.savefig(save_dir+'poster_tendency_14h.pdf', bbox_inches="tight")
 ####################################################################### 
 #%% Make videos
 if make_videos:
@@ -1547,7 +1704,7 @@ if make_videos:
         print('Creating images for video')
         var = 'clwvi'
         for ii in np.arange(srt_time, end_time,timedelta(hours = 2)):
-            plt.figure()
+            plt.figure()    
             ax =nc_data_cl.sel(time=ii)[var].plot(vmin=0,vmax=1,\
                                     cmap=plt.cm.Blues_r,x='lon',y='lat',\
                                     subplot_kws=dict(projection=proj))
