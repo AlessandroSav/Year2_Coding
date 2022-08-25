@@ -34,8 +34,6 @@ di    = 2      # delta time for plots
 pltheights = 3000  # in m
 store = True
 klps = [30,]         ## halfh the number of grids after coarsening 
-
-
 #domain size from namotions
 xsize      =  150000 # m
 ysize      =  150000 # m
@@ -120,6 +118,8 @@ v_pfw_pf_avtime     = np.zeros((len(klps),plttime.size))
 v_psfw_psf_avtime   = np.zeros((len(klps),plttime.size))
     
 #%% Loop in time
+## make pltz time dependent so that ath each time in plttime you can select cloud top and cloud base 
+
 for i in range(len(plttime)):
     print('Processing time step', i+1, '/', len(plttime))
     

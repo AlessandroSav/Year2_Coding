@@ -372,12 +372,27 @@ if comp_experiments:
 
 #%% import and cut merged_fielddump
 print("Reading DALES merged_fielddump")
+
+# file = '/Users/acmsavazzi/Documents/Mount/Raw_Data/Les/Eurec4a/20200202_12_clim/Exp_004/merged_fielddump_wind.004.nc'
+
 fielddump = xr.open_mfdataset(dales_exp_dir+'/Exp_003/merged_fielddump_wind.003.nc',decode_times=False)
-cross_u = fielddump['u'].sel(yt=1200,zt=slice(0,5500),xm=slice(100,1200))
-cross_v = fielddump['v'].sel(ym=1200,zt=slice(0,5500),xt=slice(100,1200))
-cross_w = fielddump['w'].sel(yt=1200,zm=slice(0,5500),xt=slice(100,1200))
+#
+cross_u = fielddump['u'].sel(yt=1200,zt=slice(0,5000),xm=slice(100,1200))
+cross_u.xm.attrs=dict(description='grid number')
+cross_u.attrs['description']='cross section at y=1200'
+#
+cross_v = fielddump['v'].sel(ym=1200,zt=slice(0,5000),xt=slice(100,1200))
+cross_v.xt.attrs=dict(description='grid number')
+cross_v.attrs['description']='cross section at y=1200'
+#
+cross_w = fielddump['w'].sel(yt=1200,zm=slice(0,5000),xt=slice(100,1200))
+cross_w.xt.attrs=dict(description='grid number')
+cross_w.attrs['description']='cross section at y=1200'
 
-
+# print("Saving cross sections")
+# cross_u.to_netcdf(dales_exp_dir+'/Exp_004/cross_u.nc')
+# cross_v.to_netcdf(dales_exp_dir+'/Exp_004/cross_v.nc')
+# cross_w.to_netcdf(dales_exp_dir+'/Exp_004/cross_w.nc')
 #%% Import Harmonie
 ### Import large scale spatial means (used for LES forcing)
 print("Reading HARMONIE spatial mean (used for LES forcing).") 
@@ -1746,16 +1761,36 @@ if make_videos:
             os.remove(image)
 
 #%% MOMENTS
-layer = [800,1500]
+layer = [0,300]
 composite = False
-# groupby(dales_to_plot.time.dt.hour).mean()
-plt.figure(figsize=(19,5))
-# for var in ['w2']:
-for var in ['u2','v2','w2','thl2','qt2']:
+# # groupby(dales_to_plot.time.dt.hour).mean()
+# plt.figure(figsize=(19,5))
+# # for var in ['w2']:
+# for var in ['u2','v2','w2','thl2','qt2']:
+#     if composite:
+#         moments[var].groupby(moments.time.dt.hour).mean().sel(z=slice(layer[0],layer[1])).mean('z').plot(label=var)
+#     else:     
+#         moments[var].sel(z=slice(layer[0],layer[1])).mean('z').plot(x='time',label=var)
+#         if comp_experiments:
+#             mom_isurf5[var].sel(z=slice(layer[0],layer[1])).mean('z').plot(x='time',label=var)
+#         plt.xlim(temp_hrs)
+#         for ii in np.arange(srt_time, end_time):
+#             plt.axvline(x=ii,c='k',lw=0.5,alpha=0.5)
+# plt.legend()
+# plt.title('Variance in layer '+str(layer),fontsize=20)
+
+##variance compare layer 
+moments['ctop_var'] = moments.sel(z=tmser.sel(time=moments.time).zc_max - 400,method='nearest')['u2']
+fig, axs = plt.subplots(figsize=(19,5))
+ax2 = axs.twinx()
+for var in ['u2']:
     if composite:
         moments[var].groupby(moments.time.dt.hour).mean().sel(z=slice(layer[0],layer[1])).mean('z').plot(label=var)
     else:     
-        moments[var].sel(z=slice(layer[0],layer[1])).mean('z').plot(x='time',label=var)
+        moments[var].sel(z=slice(layer[0],layer[1])).mean('z').plot(x='time',label=var,lw=2,c='k')
+        moments['ctop_var'].plot(x='time',label='u2 at cloud top',lw=2,c='r')
+        profiles.rainrate.sel(z=slice(0,300)).mean('z').plot(x='time',ax=axs,alpha=0.7,ls='--',label='Rain')
+        # tmser.zc_max.plot(x='time', label = 'cloud top')
         if comp_experiments:
             mom_isurf5[var].sel(z=slice(layer[0],layer[1])).mean('z').plot(x='time',label=var)
         plt.xlim(temp_hrs)
@@ -1763,6 +1798,7 @@ for var in ['u2','v2','w2','thl2','qt2']:
             plt.axvline(x=ii,c='k',lw=0.5,alpha=0.5)
 plt.legend()
 plt.title('Variance in layer '+str(layer),fontsize=20)
+
 #%%
 
 #%%

@@ -32,7 +32,7 @@ exp_nr=['004']
 ## running on Local
 base_dir = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES_atECMWF/outputs/'
 ## running on staffumbrella
-base_dir = 
+# base_dir = 
 ## running on VrLab
 # read_dir  = os.path.abspath('{}/../')+'/'
 # write_dir = os.path.abspath('{}/../average_150km/')+'/'
