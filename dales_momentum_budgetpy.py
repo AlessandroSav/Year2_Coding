@@ -466,10 +466,10 @@ for EXT in ["clt_his*.nc","cll_his*.nc","clm_his*.nc","clh_his*.nc","clwvi_his*.
     for file in glob(os.path.join(harmonie_dir, EXT)):
         if harmonie_time_to_keep in file:
             nc_files.append(file) 
-try:
-    nc_data_cl  = xr.open_mfdataset(nc_files, combine='by_coords')
-except TypeError:
-    nc_data_cl  = xr.open_mfdataset(nc_files)
+# try:
+#     nc_data_cl  = xr.open_mfdataset(nc_files, combine='by_coords')
+# except TypeError:
+#     nc_data_cl  = xr.open_mfdataset(nc_files)
     
 cl_max=np.zeros(len(harm_clim_avg.time))
 for ii in range(len(harm_clim_avg.time)) :
@@ -684,7 +684,7 @@ print("Plotting.")
 day_interval    = [10,16]
 night_interval  = [22,4]
 
-days = ['2020-02-02','2020-02-03']
+days = ['2020-02-03','2020-02-03']
 def find_time_interval(time_1,time_2):
     if time_1 > time_2:
         temp= list(range(time_1,24)) + list(range(0,time_2+1))
@@ -699,6 +699,11 @@ if ii == 'all':
 elif ii == 'days':
     hrs_to_plot = profiles.where(profiles.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
     harm_toplot = harm_clim_avg.where(harm_clim_avg.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
+    label = str(days)
+    title='Domain mean for '+ " ".join(days)
+elif ii == 'hour':
+    hrs_to_plot = profiles.sel(time=days[0])
+    harm_toplot =  harm_clim_avg.sel(time=days[0])
     label = str(days)
     title='Domain mean for '+ " ".join(days)
 
@@ -739,7 +744,10 @@ for group_by in ['groups']:
     plt.figure(figsize=(4,9))
     for idx,var in enumerate(['u','v']):
         hrs_to_plot[var].mean('time').plot(y='z',c=col[idx*3],lw=3, label='DALES '+var)
-        harm_toplot[var].mean('time').plot(y='z',c=col[idx*3],lw=3,ls='--', label='HARMONIE '+var)
+        if ii=='hour':
+            harm_toplot[var].plot(y='z',c=col[idx*3],lw=3,ls='--', label='HARMONIE '+var)
+        else:
+            harm_toplot[var].mean('time').plot(y='z',c=col[idx*3],lw=3,ls='--', label='HARMONIE '+var)
     #     if group_by == 'flights':
     #         profiles.where(profiles.time.dt.strftime('%Y-%m-%d').isin(joanne.time.dt.strftime('%Y-%m-%d')),drop=True)[var].mean('time').plot(y='z',ls='--',c=col[idx*3],lw=2,label='Flights')
     #     if group_by =='groups':
@@ -760,7 +768,7 @@ for group_by in ['groups']:
     plt.xlabel('m/s')
     plt.axvline(0,c='k',lw=0.5)
     plt.ylim(height_lim)
-    plt.xlim([-10,1.5])
+    plt.xlim([-10,2.5])
     plt.savefig(save_dir+'poster_mean_winds.pdf', bbox_inches="tight")
  
     #%%
@@ -954,15 +962,16 @@ exp_prof  = profiles
 exp_tmser = tmser
 
 plt.figure(figsize=(19,5))
-exp_prof.cfrac.sel(time='2020-02-03').plot(y="z",cmap=plt.cm.Blues_r,vmax=0.005,vmin=0)
+exp_prof.cfrac.plot(y="z",cmap=plt.cm.Blues_r,vmax=0.005,vmin=0)
 exp_tmser.zc_max.rolling(time=30, center=True).mean().plot(c='r',ls='-')
 exp_tmser.zc_av.plot(c='r',ls='--')
-# exp_tmser.zb.plot(c='k')
+exp_tmser.zb.plot(c='k')
+exp_tmser.zi.plot(c='k',ls='--')
 plt.ylim([0,8000])
 plt.title('DALES',fontsize = 21)
 plt.ylabel('z [m]')
 plt.xlabel('')
-plt.xlim(['2020-02-03','2020-02-04'])
+# plt.xlim(['2020-02-03','2020-02-04'])
 plt.axvline(x=np.datetime64('2020-02-03T12'),c='k')
 # for tm in np.arange(srt_time, end_time):
 #     plt.axvline(x=tm,c='k')
@@ -1407,8 +1416,8 @@ plt.savefig(save_dir+'tmser_'+var+'tend_rol'+str(rol)+'.pdf', bbox_inches="tight
 exp_tend = samptend
 
 #%%    
-days = ['2020-02-03T13','2020-02-03T14','2020-02-03T15']
-# days = ['2020-02-03T14']
+# days = ['2020-02-03T13','2020-02-03T14','2020-02-03T15']
+days = ['2020-02-09']
 # days = ['2020-02-03T12','2020-02-03T13','2020-02-03T14',
 #     '2020-02-03T15','2020-02-03T16','2020-02-03T17',\
 #         '2020-02-03T18','2020-02-03T19','2020-02-03T20','2020-02-03T21','2020-02-03T22','2020-02-03T23']
@@ -1425,7 +1434,7 @@ for ii in ['days']:
             h_hind_to_plot[avg] = harm_hind_avg[avg].sel(time=slice(temp_hrs[0]+np.timedelta64(2,'h'),temp_hrs[1]-np.timedelta64(26,'h')))
         title='Domain and Temporal mean'
     elif ii == 'days':
-        tend_to_plot   = exp_tend.where(exp_tend.time.dt.strftime('%Y-%m-%dT%H').isin(days),drop=True)
+        tend_to_plot   = exp_tend.where(exp_tend.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
         # h_clim_to_plot = harm_clim_avg.where(harm_clim_avg.time.dt.strftime('%Y-%m-%d').isin(days),drop=True)
         h_clim_to_plot = harm_clim_avg.where(harm_clim_avg.time.isin(tend_to_plot.time,),drop=True)
         tend_to_plot = tend_to_plot.sel(time=h_clim_to_plot.time)

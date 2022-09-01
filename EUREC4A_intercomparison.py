@@ -37,20 +37,20 @@ params = {'legend.fontsize': 'large',
 pylab.rcParams.update(params)
 
 #%%
-save_dir = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/EMD-MIP/'
+save_dir = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/EUREC4A-MIP/'
 import shapely.geometry as sgeom
 from cartopy.geodesic import Geodesic
 
 
-srm_in  = [12, -48, 22, -60]
+srm_in  = [10, -48, 20, -61]
 srm_out = [0, -20, 30, -76]
-srm_typ = [10,-35, 24, -61]
+srm_typ = [6,-35, 24, -63]
 
 ##
-les_centre = [13.3,-57.5]
+les_centre = [13.3,-57.7]
 HALO_centre = [13.3,-57.7]
-Dx = geopy.distance.distance(kilometers = 150)
-Dy = geopy.distance.distance(kilometers = 75)
+Dx = geopy.distance.distance(kilometers = 200)
+Dy = geopy.distance.distance(kilometers = 125)
 
 lat_max = Dy.destination(point=les_centre, bearing=0)
 lat_min = Dy.destination(point=les_centre, bearing=180)

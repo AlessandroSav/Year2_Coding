@@ -9,8 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import netCDF4 as nc
 import gc
+import os
 import sys
-sys.path.insert(1, '/Users/acmsavazzi/Documents/WORK/PhD_Year2/Coding/Scale_separation/')
+sys.path.insert(1, os.path.abspath('.'))
 from functions import *
 from dataloader import DataLoaderDALES
 import argparse
@@ -24,16 +25,15 @@ import xarray as xr
 # t   = total grid laevel 
 # m   = middle of the grid 
 
-# for casenr in ['001','002','003','004','005','006','007','008','009','010',\
-#                '011','012','013','014','015','016','017','018']:
-for casenr in ['007','008','009','010',\
-               '011','012','013','014','015','016','017','018']:
+for casenr in ['001','002','003','004','005','006','007','008','009','010',\
+                '011','012','013','014','015','016','017']:
+# for casenr in ['018','019']:
    
     print('################## \n ### Exp_'+casenr+'###')
-    pltheights = 1500  # in m  # height at which to compute the scale separation 
+    pltheights = 200  # in m  # height at which to compute the scale separation 
     ## running on staffumbrella
-    # lp = 
-    # save_dir   = ''
+    # lp = os.path.abspath('../../../Raw_Data/Les/Eurec4a/20200202_12/Exp_'+casenr)
+    # save_dir   = lp
     ## running on Local
     lp =  '/Users/acmsavazzi/Documents/Mount/Raw_Data/Les/Eurec4a/20200202_12_clim/Exp_'+casenr
     save_dir   = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES_atECMWF/outputs/20200202_12_clim/Exp_'+casenr
