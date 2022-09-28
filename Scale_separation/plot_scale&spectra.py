@@ -402,7 +402,7 @@ if spec:
     plt.legend()
     plt.title('Mean cumulative spectra uw',fontsize = 20)
     plt.suptitle('1st quaritle of uw')
-    plt.savefig(save_dir+'spectra_distribution_uw_Q1.pdf', bbox_inches="tight")
+    # plt.savefig(save_dir+'spectra_distribution_uw_Q1.pdf', bbox_inches="tight")
     
 #%% 
 # ### Here statisitcs are compute before normalising the data
@@ -463,23 +463,23 @@ if scale_sep:
     plt.figure(figsize=(4,9))
     
     
-    ((dl_geo['uflx_conv']+dl_geo['uflx_turb']).mean(dim=['x','y'])+\
-      dl_geo['up_wp']).sel(time=time).mean('time').sel(z=slice(0,4500)).\
-        plot(y='z',c='r',ls='--',lw=2,label='HARMONIE Tot')
+    # ((dl_geo['uflx_conv']+dl_geo['uflx_turb']).mean(dim=['x','y'])+\
+    #   dl_geo['up_wp']).sel(time=time).mean('time').sel(z=slice(0,4500)).\
+    #     plot(y='z',c='r',ls='--',lw=2,label='HARMONIE Tot')
         
-    ((dl_geo['uflx_conv']+dl_geo['uflx_turb']).mean(dim=['x','y'])\
-      ).sel(time=time).mean('time').sel(z=slice(0,4500)).\
-        plot(y='z',c='g',ls='--',label='HARMONIE Param')
+    # ((dl_geo['uflx_conv']+dl_geo['uflx_turb']).mean(dim=['x','y'])\
+    #   ).sel(time=time).mean('time').sel(z=slice(0,4500)).\
+    #     plot(y='z',c='g',ls='--',label='HARMONIE Param')
         
-    # ((dl_geo['uflx_conv']).mean(dim=['x','y'])\
-    #   ).sel(time=time[it]).sel(z=slice(0,4500)).\
-    #     plot(y='z',c='b',label='HARMONIE conv',lw=1)
-    # ((dl_geo['uflx_turb']).mean(dim=['x','y'])\
-    #   ).sel(time=time[it]).sel(z=slice(0,4500)).\
-    #     plot(y='z',c='g',label='HARMONIE turb')
+    # # ((dl_geo['uflx_conv']).mean(dim=['x','y'])\
+    # #   ).sel(time=time[it]).sel(z=slice(0,4500)).\
+    # #     plot(y='z',c='b',label='HARMONIE conv',lw=1)
+    # # ((dl_geo['uflx_turb']).mean(dim=['x','y'])\
+    # #   ).sel(time=time[it]).sel(z=slice(0,4500)).\
+    # #     plot(y='z',c='g',label='HARMONIE turb')
         
-    dl_geo['up_wp'].sel(time=time).mean('time').sel(z=slice(0,4500)).\
-        plot(y='z',c='k',ls='--',label='HARMONIE Resol')
+    # dl_geo['up_wp'].sel(time=time).mean('time').sel(z=slice(0,4500)).\
+    #     plot(y='z',c='k',ls='--',label='HARMONIE Resol')
         
 
 
@@ -503,7 +503,7 @@ if scale_sep:
     # plt.plot((u_pfw_pf + u_psfw_psf)[it,:],ztlim,c='k',ls= ':',alpha=0.5,label='sum')
     plt.legend()
     plt.axvline(0,c='grey',alpha=0.6,lw=0.5)
-    plt.xlim([-0.013,0.05])
+    # plt.xlim([-0.013,0.05])
     plt.ylim([0,4000])
     plt.xlabel(r"$m^2 /s^2$")
     # plt.title('Mean UW at '+np.datetime_as_string(time[it], unit='h'))
@@ -520,23 +520,23 @@ if scale_sep:
         plt.figure(figsize=(4,9))
         
         
-        ((dl_geo['uflx_conv']+dl_geo['uflx_turb']).mean(dim=['x','y'])+\
-          dl_geo['up_wp']).sel(time=time[it]).sel(z=slice(0,4500)).\
-            plot(y='z',c='r',ls='--',lw=3,label='HARMONIE Tot')
+        # ((dl_geo['uflx_conv']+dl_geo['uflx_turb']).mean(dim=['x','y'])+\
+        #   dl_geo['up_wp']).sel(time=time[it]).sel(z=slice(0,4500)).\
+        #     plot(y='z',c='r',ls='--',lw=3,label='HARMONIE Tot')
             
-        ((dl_geo['uflx_conv']+dl_geo['uflx_turb']).mean(dim=['x','y'])\
-          ).sel(time=time[it]).sel(z=slice(0,4500)).\
-            plot(y='z',c='g',lw=2,ls='--',label='HARMONIE Param')
-            
-        # ((dl_geo['uflx_conv']).mean(dim=['x','y'])\
+        # ((dl_geo['uflx_conv']+dl_geo['uflx_turb']).mean(dim=['x','y'])\
         #   ).sel(time=time[it]).sel(z=slice(0,4500)).\
-        #     plot(y='z',c='b',label='HARMONIE conv',lw=1)
-        # ((dl_geo['uflx_turb']).mean(dim=['x','y'])\
-        #   ).sel(time=time[it]).sel(z=slice(0,4500)).\
-        #     plot(y='z',c='g',label='HARMONIE turb')
+        #     plot(y='z',c='g',lw=2,ls='--',label='HARMONIE Param')
             
-        dl_geo['up_wp'].sel(time=time[it]).sel(z=slice(0,4500)).\
-            plot(y='z',c='k',lw=2,ls='--',label='HARMONIE Resol')
+        # # ((dl_geo['uflx_conv']).mean(dim=['x','y'])\
+        # #   ).sel(time=time[it]).sel(z=slice(0,4500)).\
+        # #     plot(y='z',c='b',label='HARMONIE conv',lw=1)
+        # # ((dl_geo['uflx_turb']).mean(dim=['x','y'])\
+        # #   ).sel(time=time[it]).sel(z=slice(0,4500)).\
+        # #     plot(y='z',c='g',label='HARMONIE turb')
+            
+        # dl_geo['up_wp'].sel(time=time[it]).sel(z=slice(0,4500)).\
+        #     plot(y='z',c='k',lw=2,ls='--',label='HARMONIE Resol')
             
 
 
@@ -545,22 +545,24 @@ if scale_sep:
         # DLES_tot =  u_psfw_psf[k,it,:] + u_pfw_pf[k,it,:] + profiles['uws'].sel(time=slice(time[it-1],time[it])).interp(zm=ztlim).mean('time')
         
         # plt.plot(DLES_tot,ztlim,c='k',lw=3,label='DALES Tot')
-        plt.plot(uw_p[0,it,:],ztlim,c='r',lw=3,label='DALES Tot')
+        plt.plot(uw_p[0,it,:],ztlim,c='r',lw=3,label='D. Tot')
         
        
         for k in [2]:
-            plt.plot(u_psfw_psf[k,it,:],ztlim,c='g',lw=2,label='DALES SFS <'+str(150/(klps*2)[k])+' km')
-            plt.plot(u_pfw_pf[k,it,:],ztlim,c='k',lw=2,ls='-',label='DALES FS >'+str(150/(klps*2)[k])+' km')
+            plt.plot(u_psfw_psf[k,it,:],ztlim,c='g',lw=2,label='D. SFS <'+str(150/(klps*2)[k])+' km')
+            plt.plot(u_pfw_pf[k,it,:],ztlim,c='k',lw=2,ls='-',label='D. FS >'+str(150/(klps*2)[k])+' km')
         profiles['uws'].sel(zm=ztlim,method='nearest').sel(time=time[it-1],method='nearest').\
-            plot(y='zm',ls=':',c='b',label='DALES Param')
+            plot(y='zm',ls=':',c='b',label='D. Param')
         # plt.plot((u_pfw_pf + u_psfw_psf)[it,:],ztlim,c='k',ls= ':',alpha=0.5,label='sum')
-        # plt.legend()
+        plt.legend()
         plt.xlabel(r'$m^2/s^2$')
         plt.axvline(0,c='grey',alpha=0.6,lw=0.5)
-        plt.xlim([-0.034,0.061])
+        # plt.xlim([-0.034,0.061])
         plt.ylim([0,4000])
         plt.title('Mean UW at '+np.datetime_as_string(time[it], unit='h'))
-        plt.savefig(save_dir+'poster_uw_momflux_prof_'+np.datetime_as_string(time[it])+'.pdf', bbox_inches="tight")
+        # plt.savefig(save_dir+'poster_uw_momflux_prof_'+np.datetime_as_string(time[it])+'.pdf', bbox_inches="tight")
+        # plt.savefig(save_dir+'DALES_uw_momflux_prof_'+np.datetime_as_string(time[it])+'.pdf', bbox_inches="tight")
+
 # 
 #%% Mean scale separation 
 

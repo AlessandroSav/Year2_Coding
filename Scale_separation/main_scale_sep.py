@@ -20,20 +20,20 @@ import xarray as xr
 #%%
 
 mod = 'dales'
-casenr = '001'
+casenr = '003'
 # lp = '/home/hp200321/data/botany-6-768/runs/Run_40'
 # lp = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES/Experiments/20200209_10/Exp_006'
-# lp = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES_atECMWF/outputs/20200202_12_clim/Exp_'+casenr
-lp =  '/Users/acmsavazzi/Documents/Mount/Raw_Data/Les/Eurec4a/20200202_12_clim/Exp_'+casenr
+lp = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES_atECMWF/outputs/20200202_12_clim/Exp_'+casenr
+# lp =  '/Users/acmsavazzi/Documents/Mount/Raw_Data/Les/Eurec4a/20200202_12_clim/Exp_'+casenr
 
 save_data_dir   = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES_atECMWF/outputs/20200202_12_clim/Exp_'+casenr
 
 itmin = 1
 itmax = 24
 di    = 8       # delta time for plots 
-izmin = 0
-izmax = 95
-store = True
+izmin = 11
+izmax = 12
+store = False
 klps = [30,]         ## halfh the number of grids after coarsening 
 #domain size from namotions
 xsize      =  150000 # m
@@ -188,13 +188,13 @@ for i in range(len(plttime)):
         # # filtered fluxes
         # uu_pf = lowPass(uu_p, circ_mask)
         # uv_pf   = lowPass(uv_p, circ_mask)
-        # uw_pf = lowPass(uw_p, circ_mask)
+        uw_pf = lowPass(uw_p, circ_mask)
         # vv_pf   = lowPass(vv_p, circ_mask)
         # vw_pf   = lowPass(vw_p, circ_mask)
         # # subgrid fluxes
         # uu_psf = uu_p - uu_pf
         # uv_psf    = uv_p - uv_pf
-        # uw_psf = uw_p - uw_pf
+        uw_psf = uw_p - uw_pf
         # vv_psf    = vv_p - vv_pf
         # vw_psf    = vw_p - vw_pf    
         
@@ -350,14 +350,26 @@ plt.savefig(save_dir+'field_u_uw_'+str(int(ztlim[z_plot].values))+'m_'+np.dateti
 
 
 #%% Domain average 
-plt.figure()
-plt.plot(np.mean(uw_p,axis=(1,2)),ztlim[:],label='total')
-plt.plot(np.mean(u_pfw_pf ,axis=(1,2)),ztlim[:],label='FS')
-plt.plot(np.mean(u_psfw_psf,axis=(1,2)),ztlim[:],label='SFS')
-profiles.uwr.sel(zm=ztlim,method='nearest').sel(time=time[plttime[-1]],method='nearest').plot(y='zt',ls=':',label='profiles')
-plt.plot(np.mean(u_pfw_pf + u_psfw_psf  ,axis=(1,2)),ztlim[:],c='k',ls= ':',alpha=0.5,label='sum')
+plt.figure(figsize=(6,10))
+# plt.plot(np.mean(uw_p,axis=(1,2)),ztlim[:],label='total')
+# plt.plot(np.mean(u_pfw_pf ,axis=(1,2)),ztlim[:],label='u_p w_p UFS')
+# plt.plot(np.mean(u_psfw_psf,axis=(1,2)),ztlim[:],label='u_p w_p SFS')
+# # profiles.uwr.sel(zm=ztlim,method='nearest').sel(time=time[plttime[-1]],method='nearest').plot(y='zt',ls=':',label='profiles')
+# plt.plot(np.mean(u_pfw_pf + u_psfw_psf  ,axis=(1,2)),ztlim[:],c='k',ls= ':',alpha=0.5,label='u_p w_p sum')
+
+# plt.plot(np.mean(uw_psf,axis=(1,2)),ztlim[:],label='uw_p SFS')
+# plt.plot(np.mean(uw_pf,axis=(1,2)),ztlim[:],label='uw_p UFS')
+# plt.plot(np.mean(uw_pf + uw_psf  ,axis=(1,2)),ztlim[:],ls= ':',alpha=0.5,label='uw_p sum')
+
+
+plt.plot(np.mean((u_pf  * w_psf),axis=(1,2)),ztlim[:],label='u_f w_sf')
+plt.plot(np.mean((u_psf  * w_pf),axis=(1,2)),ztlim[:],label='u_sf w_f')
+plt.plot(np.mean((u_pf  * w_psf) + (u_psf  * w_pf)  ,axis=(1,2)),ztlim[:],ls= ':',alpha=0.5,label='cross sum')
+
+
+
 plt.legend()
-plt.xlim([0,0.004])
+# plt.xlim([0,0.004])
 plt.title('Mean UW, scale: '+str(round(f_scale/1000, 2))+' km')
 
 #%%

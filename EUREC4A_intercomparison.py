@@ -50,7 +50,7 @@ srm_typ = [6,-35, 24, -63]
 les_centre = [13.3,-57.7]
 HALO_centre = [13.3,-57.7]
 Dx = geopy.distance.distance(kilometers = 200)
-Dy = geopy.distance.distance(kilometers = 125)
+Dy = geopy.distance.distance(kilometers = 150)
 
 lat_max = Dy.destination(point=les_centre, bearing=0)
 lat_min = Dy.destination(point=les_centre, bearing=180)

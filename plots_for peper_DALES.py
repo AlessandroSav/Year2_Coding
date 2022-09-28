@@ -16,6 +16,7 @@ Analysis of DALES outputs
 import pandas as pd
 import numpy as np
 import xarray as xr
+import string
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.colors import DivergingNorm
@@ -77,33 +78,13 @@ def adjust_lightness(color, amount=0.7):
 #%%                         Open Files
 ###############################################################################
 expnr      = ['001','002','003','004','005','006','007','008','009','010',\
-              '011','012','013','014','015','016','017','018']
+              '011','012','013','014','015','016','017']
 case       = '20200202_12'
 casenr     = '001'      # experiment number where to read input files 
 
-# expnr      = ['001']
-# case       = '20200209_10'
-# casenr     = '001'      # experiment number where to read input files 
-
-### Directories for runnin on VrLab
-# base_dir   = '/Users/acmsavazzi/Documents/Mount/DALES/'
-# Input_dir  = base_dir+'Cases/20200202_12_300km/'
-# Output_dir = base_dir+'Experiments/EUREC4A/Exp_ECMWF/'+case+'/'
-# save_dir   = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/Figures/'
-# fig_dir = os.path.abspath('{}/../../Figures/DALES')+'/'
-
-### Directories for runnin on TU server
-# base_dir   = 'staff-umbrella/cmtrace/Alessandro/'
-# base_dir        = '/Users/acmsavazzi/Documents/Mount/'
-# Input_dir       = base_dir+'Raw_Data/Les/Eurec4a/'+case+'/Exp_'+casenr+'/'
-# dales_exp_dir   = base_dir+'Raw_Data/Les/Eurec4a/20200209_10/'
-# Output_dir      = base_dir+'Raw_Data/Les/Eurec4a/'+case+'/'
-# save_dir      = base_dir+'PhD_Year2/'
-# LES_forc_dir    = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/HARMONIE/LES_forcing_300km/'
-
 ### Directories for local
 base_dir        = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/'
-Input_dir       = base_dir  + 'DALES/Cases/EUREC4A/20200202_12_300km/'
+Input_dir       = base_dir  + 'DALES/Cases/EUREC4A/20200202_12_300km_clim/'
 # dales_exp_dir   = base_dir  + 'DALES_atECMWF/outputs/20200209_10/'
 dales_exp_dir   = base_dir  + 'DALES_atECMWF/outputs/20200202_12_clim'
 Output_dir      = base_dir  + 'DALES_atECMWF/outputs/20200202_12_clim/'
@@ -118,7 +99,7 @@ ifs_dir         = '/Users/acmsavazzi/Documents/WORK/Research/MyData/'
 obs_dir         = '/Users/acmsavazzi/Documents/WORK/Research/MyData/'
 Aers_Dship_dir  = '/Users/acmsavazzi/Documents/WORK/Data/Aers-Dship/'
 #SAVE DIRECTORY 
-save_dir        = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/Figures/'
+save_dir        = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/Manuscript/Figures/'
 
 ### times to read and to plot 
 srt_time   = np.datetime64('2020-02-02')
@@ -136,11 +117,16 @@ comp_experiments  = False
 harmonie_dir   = base_dir+'Raw_Data/HARMONIE/BES_harm43h22tg3_fERA5_exp0/2020/'
 harmonie_time_to_keep = '202002010000-'            
 
+#%%
+acc_time = 3600*1
+
 #%%     OPTIONS FOR PLOTTING
 
 # col=['b','r','g','orange','k']
 col=['red','coral','maroon','blue','cornflowerblue','darkblue','green','lime','forestgreen','m']
 height_lim = [0,4000]        # in m
+
+
 
 proj=ccrs.PlateCarree()
 coast = cartopy.feature.NaturalEarthFeature(\
@@ -316,117 +302,7 @@ if make_videos:
     ####     merged_crossxy.nc    ####
     # crossxy_0001 = xr.open_dataset(Output_dir+'merged_crossxy_0001.'+expnr+'.nc')
 
-#%% Import DALES sensitivity experimetns
-if comp_experiments:
-    prof_files      = [] 
-    tmser_files     = []
-    samptend_files  = []
-    moments_files   = []
-    for path,subdir,files in os.walk(dales_exp_dir):
-        if path[-3:] in ['001','002','003','004','005','006','007','008','009','010']: 
-            for file in glob(os.path.join(path, 'profiles*.nc')):
-                prof_files.append(file)
-            for file in glob(os.path.join(path, 'tmser*.nc')):
-                tmser_files.append(file)
-            for file in glob(os.path.join(path, 'samptend*.nc')):
-                samptend_files.append(file)
-            for file in glob(os.path.join(path, 'moments*')):
-                moments_files.append(file)
-    
-    ####     profiles.nc    ####    
-    print("Reading DALES exp profiles.")      
-    prof_isurf5 = xr.open_mfdataset(prof_files, combine='by_coords')
-    prof_isurf5['time'] = np.datetime64('2020-02-02') + prof_isurf5.time.astype("timedelta64[s]")
-    # interpolate half level to full level
-    prof_isurf5 = prof_isurf5.interp(zm=prof_isurf5.zt)
-    prof_isurf5 = prof_isurf5.rename({'zt':'z'})
-    
-    ####     tmser.nc   ####
-    print("Reading DALES exp time series.") 
-    tmser_isurf5 = xr.open_mfdataset(tmser_files, combine='by_coords')
-    tmser_isurf5['time'] = np.datetime64('2020-02-02') + tmser_isurf5.time.astype("timedelta64[s]")
-    
-    ####     samptend.nc    ####
-    print("Reading DALES exp tendencies.") 
-    tend_isurf5   = xr.open_mfdataset(samptend_files, combine='by_coords')
-    tend_isurf5['time'] = np.datetime64('2020-02-02') + tend_isurf5.time.astype("timedelta64[s]")
-    # interpolate half level to full level
-    tend_isurf5 = tend_isurf5.interp(zm=tend_isurf5.zt)
-    tend_isurf5 = tend_isurf5.rename({'zt':'z'})
-
-    ####     moments.001    ####
-    print("Reading DALES moments.") 
-    colnames = ['lev','z','pres','thl2','thv2','th2','qt2','u2','v2','hght','w2','skew','sfs-tke']
-    mom_isurf5  = []
-    for file in np.sort(moments_files):
-        temp    = pd.read_csv(file,\
-                skiprows=lambda x: logic(x),comment='#',\
-                delimiter = " ",names=colnames,index_col=False,skipinitialspace=True)
-        mom_isurf5.append(temp)
-    mom_isurf5 = pd.concat(mom_isurf5, axis=0, ignore_index=True)
-    mom_isurf5['time'] = (mom_isurf5.index.values//(levels-1))*(900)+900
-    mom_isurf5.set_index(['time', 'z'], inplace=True)
-    mom_isurf5 = mom_isurf5.to_xarray()
-    mom_isurf5['time'] = srt_time + mom_isurf5.time.astype("timedelta64[s]")
-
-
-#%% import and cut merged_fielddump
-print("Reading DALES merged_fielddump")
-
-# file = '/Users/acmsavazzi/Documents/Mount/Raw_Data/Les/Eurec4a/20200202_12_clim/Exp_004/merged_fielddump_wind.004.nc'
-
-fielddump = xr.open_mfdataset(dales_exp_dir+'/Exp_003/merged_fielddump_wind.003.nc',decode_times=False)
-#
-cross_u = fielddump['u'].sel(yt=1200,zt=slice(0,5000),xm=slice(100,1200))
-cross_u.xm.attrs=dict(description='grid number')
-cross_u.attrs['description']='cross section at y=1200'
-#
-cross_v = fielddump['v'].sel(ym=1200,zt=slice(0,5000),xt=slice(100,1200))
-cross_v.xt.attrs=dict(description='grid number')
-cross_v.attrs['description']='cross section at y=1200'
-#
-cross_w = fielddump['w'].sel(yt=1200,zm=slice(0,5000),xt=slice(100,1200))
-cross_w.xt.attrs=dict(description='grid number')
-cross_w.attrs['description']='cross section at y=1200'
-
-# print("Saving cross sections")
-# cross_u.to_netcdf(dales_exp_dir+'/Exp_004/cross_u.nc')
-# cross_v.to_netcdf(dales_exp_dir+'/Exp_004/cross_v.nc')
-# cross_w.to_netcdf(dales_exp_dir+'/Exp_004/cross_w.nc')
 #%% Import Harmonie
-### Import large scale spatial means (used for LES forcing)
-print("Reading HARMONIE spatial mean (used for LES forcing).") 
-harm_hind_avg = {}
-if LES_forc_HARMONIE:
-    harm_avg_domains = ['150','300','500']
-else: harm_avg_domains = ['300']
-for avg in harm_avg_domains:
-
-    harm_hind_avg[avg] = xr.open_dataset(LES_forc_dir+'../LES_forcing_'+avg+'km/LES_forcing_202002'+\
-                          srt_time.astype(str)[8:10]+'00.nc')
-    for ii in np.arange(srt_time, end_time)[1:]:    
-        harm_hind_avg[avg] = xr.concat((harm_hind_avg[avg],xr.open_dataset(LES_forc_dir+\
-                 '../LES_forcing_'+avg+'km/LES_forcing_202002'+ii.astype(str)[8:10]+'00.nc')),dim='time')
-    #
-    harm_hind_avg[avg] = calc_geo_height(harm_hind_avg[avg],fliplevels=True)
-    z_ref = harm_hind_avg[avg].z.mean('time')
-    zz    = harm_hind_avg[avg].z
-    
-    for var in list(harm_hind_avg[avg].keys()):
-        if 'level' in harm_hind_avg[avg][var].dims:
-            print("interpolating variable "+var)
-            x = np.empty((len(harm_hind_avg[avg]['time']),len(harm_hind_avg[avg]['level'])))
-            x[:] = np.NaN
-            for a in range(len(harm_hind_avg[avg].time)):
-                x[a,:] = np.interp(z_ref,zz[a,:],harm_hind_avg[avg][var].isel(time = a))            
-            harm_hind_avg[avg][var] = (("time","level"), x)    
-    # convert model levels to height levels
-    harm_hind_avg[avg] = harm_hind_avg[avg].rename({'z':'geo_height'})
-    harm_hind_avg[avg] = harm_hind_avg[avg].rename({'level':'z'})
-    harm_hind_avg[avg] = harm_hind_avg[avg].rename({'q':'qt','dtq_phy':'dtqt_phy','dtq_dyn':'dtqt_dyn'})
-    harm_hind_avg[avg]["z"] = (z_ref-z_ref.min()).values
-    harm_hind_avg[avg]['z'] = harm_hind_avg[avg].z.assign_attrs(units='m',long_name='Height')
-
 ### Import raw Harmonie data
 # This is too slow... need to find a better way. Maybe in a separate file open
 # and save only the points and time neede for comparison.
@@ -457,27 +333,6 @@ if harm_3d:
     harm_clim_avg["z"] = (z_ref-z_ref.min()).values
     harm_clim_avg['z'] = harm_clim_avg.z.assign_attrs(units='m',long_name='Height')
     
-## 2D fields    
-##      # Read cloud fraction
-## !!!  THIS SHOULD BE MOVED TO HARMONIE_BASIC.PY !!!
-print("Reading 2D HARMONIE data.") 
-nc_files = []
-for EXT in ["clt_his*.nc","cll_his*.nc","clm_his*.nc","clh_his*.nc","clwvi_his*.nc","clivi_his*.nc"]:
-    for file in glob(os.path.join(harmonie_dir, EXT)):
-        if harmonie_time_to_keep in file:
-            nc_files.append(file) 
-# try:
-#     nc_data_cl  = xr.open_mfdataset(nc_files, combine='by_coords')
-# except TypeError:
-#     nc_data_cl  = xr.open_mfdataset(nc_files)
-    
-cl_max=np.zeros(len(harm_clim_avg.time))
-for ii in range(len(harm_clim_avg.time)) :
-    cl_max[ii]=(harm_clim_avg.z.where(harm_clim_avg.cl>0).isel(time=ii)).\
-        sel(z=slice(300,6000)).max().values
-        
-np.save(save_dir+'/cl_max_HARM.npy',cl_max)
-
 #%% Import observations
 print("Reading observations.") 
 
@@ -491,10 +346,6 @@ ds_obs = {}
 ds_obs['radio'] = xr.open_dataset(obs_dir+'nc_radio.nc').sel(launch_time=slice(srt_time,end_time)).rename({'q':'qt'})
 ds_obs['drop'] = xr.open_dataset(obs_dir+'My_sondes.nc').sel(launch_time=slice(srt_time,end_time)).rename({'q':'qt'})
 
-## meteor fluxes
-Meteor = xr.open_dataset(Aers_Dship_dir+'../EUREC4A_Meteor_surface_heat_fluxes_20200115_v1.0.nc')\
-    .sel(time=slice(srt_time,end_time))
-
 
 ####
 joanne['start_flight'] = ds_obs['drop']['launch_time'].resample(launch_time = "1D").first().dropna(dim='launch_time').rename({'launch_time':'time'})
@@ -505,6 +356,12 @@ joanne['end_flight']   = joanne['end_flight']   + np.timedelta64(4,'h')
 #%% import ERA5
 print("Reading ERA5.") 
 era5=xr.open_dataset(ifs_dir+'My_ds_ifs_ERA5.nc')
+
+#%% Import scale separated fluxes 
+
+
+
+
 #%%                         
 ###############################################################################
 rho = ls_surf['rho'].mean()
@@ -528,33 +385,17 @@ profiles['K_dif_u'] = - profiles.uwt / profiles.du_dz
 profiles['K_dif_v'] = - profiles.vwt / profiles.dv_dz
 profiles['rain']    = profiles.rainrate/(24*28.94)
 profiles['rain'].attrs["units"] = "mm/hour"
+profiles['qt'] = profiles['qt'] *1000
+profiles['qt'].attrs["units"] = "g/kg"
 
 for var in ['u','v','thl','qt']:
     if var+'tendphyall' not in samptend:
         samptend[var+'tendphyall'] = samptend[var+'tendtotall'] - samptend[var+'tendlsall']
 
-## DALES isurf 5
-if comp_experiments:
-    prof_isurf5 = prof_isurf5.rename({'presh':'p'})
-    prof_isurf5['wspd']    = np.sqrt(prof_isurf5['u']**2 + prof_isurf5['v']**2)
-    prof_isurf5['th']   = prof_isurf5['thl'] + Lv / (cp * calc_exner(prof_isurf5['p'])) * prof_isurf5['ql']
-    prof_isurf5['T']    = calc_T(prof_isurf5['th'],prof_isurf5['p'])
-
 
 ## for HARMONIE cy40
 nudge['wspd']    = np.sqrt(nudge['u']**2    + nudge['v']**2)
 
-### for HARMONIE cy40
-# convert temperature to potential temperature
-for avg in harm_avg_domains:
-    harm_hind_avg[avg]['th']    = calc_th(harm_hind_avg[avg].T,harm_hind_avg[avg].p)
-    harm_hind_avg[avg]['thl']   = calc_thl(harm_hind_avg[avg]['th'],harm_hind_avg[avg]['ql'],harm_hind_avg[avg]['p'])
-    harm_hind_avg[avg]['wspd']  = np.sqrt(harm_hind_avg[avg]['u']**2 + harm_hind_avg[avg]['v']**2)
-    harm_hind_avg[avg]['du_dz'] = harm_hind_avg[avg]['u'].differentiate('z')
-    harm_hind_avg[avg]['dv_dz'] = harm_hind_avg[avg]['v'].differentiate('z')
-    for ii in ['phy','dyn']:
-        harm_hind_avg[avg]['dtthl_'+ii]=calc_th(harm_hind_avg[avg]['dtT_'+ii],harm_hind_avg[avg].p) - Lv / \
-            (cp *calc_exner(harm_hind_avg[avg].p)) * harm_hind_avg[avg]['dtqc_'+ii]
             
 ### for HARMONIE cy43
 if harm_3d:
@@ -576,7 +417,6 @@ if harm_3d:
     #     if 'dt' in var:
     #         harm_clim_avg[var] = (harm_clim_avg[var].diff('time')) * step**-1  # gives values per second
 
-        
         
 ### for ERA5
 if 'qt'not in (list(era5.keys())):
@@ -601,11 +441,8 @@ ds_obs['drop']['T'] += 273.15
 
 #%% Group by day
 profiles_daily  = profiles.resample(time='D').mean('time')
-harm_hind_daily = harm_hind_avg['300'].resample(time='D').mean('time')
 
-acc_time = 3600*1
 tend_daily= (acc_time*samptend).resample(time='D').mean('time')
-comp_tend = (acc_time*samptend).groupby(samptend.time.dt.hour)
 #%% Group by shape of some variables
 ####  K-mean clustering 
 
@@ -650,37 +487,130 @@ time_u2r_Q3 = profiles.where(profiles.sel(z=slice(0,200)).mean('z').u2r > u2r_Q3
 #%%                         PLOTTING
 ###############################################################################
 print("Plotting.") 
-# Variables to plot: 
-# u, v, wsps, u'w', v'w', du_dz, dv_dz, du'w'_dz, dv'w'_dz, cloud_frac
+#%% ## FIGURE 1 ##
+fig, axs = plt.subplots(3,1,figsize=(19,19))
+## panel a
+profiles.cfrac.plot(y="z",cmap=plt.cm.Blues_r,vmax=0.1,vmin=0,ax=axs[0],cbar_kwargs=dict(orientation='horizontal',
+                        pad=0.03, shrink=0.5,label='Fraction'))
+ax2 = axs[0].twinx()
+profiles.rain.sel(z=slice(0,50)).mean('z').rolling(time=6, center=True).mean().plot(x='time',ax=ax2,c='r',ls='-',label='Rain')
+ax2.set_ylim([-0.01,4])
+ax2.tick_params(axis='y', colors='red')
+axs[0].set_title('Cloud fraction in DALES',fontsize = 22)
+axs[0].set_ylabel('z [m]')
+axs[0].set_ylim(height_lim)
+ax2.set_ylabel(r'Rain rate [$W/m^2$]',color='r')
+for tm in np.arange(srt_time, end_time):
+    axs[0].axvline(x=tm,c='k')
+    
+## panel b
+for level in [200]: # meters
+    for var in ['wspd']:
+        axs[1].plot(profiles.time,profiles[var].sel(z=level,method='nearest'),lw=3,c=col[3],label='DALES')
+        if var in ds_obs['drop']:
+            axs[1].scatter((ds_obs['drop'].launch_time  + np.timedelta64(4, 'h')).values,\
+                    ds_obs['drop'].sel(Height=level,method='nearest').sel(launch_time=slice(srt_time,end_time))[var].values,c=col[2],alpha = 0.5,s=12,label='Dropsondes')
+        if var in ds_obs['radio']:
+            axs[1].scatter((ds_obs['radio'].launch_time + np.timedelta64(4, 'h')).values,\
+                    ds_obs['radio'].sel(Height=level,method='nearest').sel(launch_time=slice(srt_time,end_time))[var].values,c=col[6],alpha = 0.5,s=12,label='Radiosondes')
+        if harm_3d:
+            axs[1].plot(harm_clim_avg.time,harm_clim_avg[var].sel(z=level,method='nearest'),lw=1.5,c=col[0],label='HARMONIE')
+        if var in era5:
+            axs[1].plot(era5.Date.sel(Date=slice(srt_time,end_time)),era5[var].sel(Height=level,method='nearest').\
+                     sel(Date=slice(srt_time,end_time)).mean('Mypoint'),\
+                     lw=1.5,ls='-',c=col[8], label='ERA5')
+        # plt.xlabel('time')
+        axs[1].set_ylabel('[m/s]')
+        axs[1].set_title('Wind speed at '+str(level)+' m',size=22)
+        axs[1].set_ylim([None,17])
+        axs[1].legend(fontsize=15)
 
-# Separate contributors in the momentum budget.
 
-# Subsets of data:
-# 1) Domain and Temporl mean profiles
-#
-# 2) Domain mean profiles for daytime & nighttime separately
-#
-# 3) Domain mean profiles for subset of days 
-#   a) arbitrarly choosen 
-#   b) selcted with K-mean clustering on the shape of e.g. du_dz (shear)
-#
-# 4) Temporal mean profiles for cloudy regions, updrafts, downdrafts, environment separately
+## panel c
+layer = [0,750]
+var = 'u'
+rol = 10
 
-#%% 1) Domain and Temporl mean profiles
+dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).mean('z')\
+    .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
+h_clim_to_plot = harm_clim_avg.sel(z=slice(layer[0],layer[1])).mean('z')\
+    .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
 
-### grouped by large scale forcings
-# for ii in ['u','v','vwt','qt','uwt']:
-#     plt.figure(figsize=(6,9))
-#     for key, group in profiles_daily.groupby(tend_daily['group_LS']):
-#         group[ii].mean('time').plot(y='z',c=col[key*3],lw=3,label='Group '+str(key))
-#         group[ii].plot.line(y='z',c=col[key*3],lw=0.7,alpha=0.5,add_legend=False)
-#     plt.legend()
-#     plt.title('group_LS',size=20)
-#     plt.ylim(height_lim)
-#     # plt.xlim([-17,3])
-#     plt.axvline(0,c='k',lw=0.5)
+## DALES 
+(acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendtotall']).plot(c='r',label='DALES: Net',ax=axs[2])
+(acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendlsall']).plot(c='k', label='DALES: LS',ax=axs[2])
+(acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendphyall']).plot(c='g',label='DALES: Net - LS',ax=axs[2])
+
+## HARMONIE cy43 clim
+(acc_time*(h_clim_to_plot['dt'+var+'_dyn']+h_clim_to_plot['dt'+var+'_phy']).rolling(time=rol).mean()).plot(c='r',ls=':',label='HAR: Net',ax=axs[2])
+(acc_time*h_clim_to_plot['dt'+var+'_dyn'].rolling(time=rol).mean()).plot(c='k',ls=':',label='HAR: Dyn',ax=axs[2])
+(acc_time*h_clim_to_plot['dt'+var+'_phy'].rolling(time=rol).mean()).plot(c='g',ls=':',label='HAR: Phy',ax=axs[2])
 
 
+axs[2].axhline(0,c='k',lw=0.5)
+axs[2].set_title('Mean '+var+' tendency between '+str(layer[0])+' and '+str(layer[1])+' m',fontsize=22)
+axs[2].legend(ncol=2,fontsize=15)
+axs[2].set_ylabel('Tendency (m/s /hour)')
+axs[2].set_ylim([-0.88,0.8])
+axs[2].set_xlabel(None)
+
+
+
+#####
+for day in np.arange(srt_time,end_time):
+    axs[0].axvline(x=day,c='k',lw=0.5)
+    axs[1].axvline(x=day,c='k',lw=0.5)
+    axs[2].axvline(x=day,c='k',lw=0.5)
+axs[0].xaxis.set_visible(False) 
+axs[1].xaxis.set_visible(False) 
+axs[0].set_xlim([srt_time,end_time])
+axs[1].set_xlim([srt_time,end_time])
+axs[2].set_xlim([srt_time,end_time])
+plt.tight_layout()
+for n, ax in enumerate(axs):
+    ax.text(0.95, 0.95, string.ascii_uppercase[n], transform=ax.transAxes, 
+            size=13)
+plt.savefig(save_dir+'Figure1_tmser.pdf', bbox_inches="tight")
+##################
+#%% ## FIGURE 2 ##
+cmap = matplotlib.cm.get_cmap('coolwarm')
+rgba = 1/9
+fig, axs = plt.subplots(1,4,figsize=(19,10))
+for idx,var in enumerate(['u','v','thl','qt']):
+    iteration = 0
+    profiles[var].mean('time').plot(y='z',c='k',lw=4, label='Mean',ax=axs[idx])
+    for day in np.unique(profiles.time.dt.day):
+        iteration +=1
+        profiles[var].sel(time='2020-02-'+str(day).zfill(2)).mean('time')\
+            .plot(ax=axs[idx],y='z',c=cmap(rgba*iteration),lw=1.5,label='Feb-'+str(day).zfill(2))
+
+   
+
+   
+    axs[idx].set_title(var,fontsize=22)        
+    axs[idx].yaxis.set_visible(False) 
+    axs[idx].set_ylim(height_lim)
+    if var =='u':
+        axs[idx].set_xlabel('m/s')
+        axs[idx].set_xlim([-17,2])
+        axs[idx].axvline(0,c='k',lw=0.5)
+        axs[idx].yaxis.set_visible(True) 
+    if var =='v':
+        axs[idx].set_xlabel('m/s')
+        axs[idx].set_xlim([-6,2])
+        axs[idx].axvline(0,c='k',lw=0.5)
+    if var =='thl':
+        axs[idx].set_xlabel('K')
+        axs[idx].set_xlim([295,321])
+    if var =='qt':
+        axs[idx].set_xlabel('g/kg')
+        # axs[idx].set_xlim([300,330])
+        axs[idx].legend(fontsize=15)
+plt.savefig(save_dir+'Figure2_profiles.pdf', bbox_inches="tight")    
+##################
+#%% ## FIGURE 3 ##
+
+##################
 #%%
 ### grouped by others
 day_interval    = [10,16]
@@ -775,31 +705,7 @@ for group_by in ['groups']:
     # plt.savefig(save_dir+'poster_mean_winds.pdf', bbox_inches="tight")
     # plt.savefig(save_dir+'DALES_winds_0203_14.pdf', bbox_inches="tight")
 
-    ## winds
-    cmap = matplotlib.cm.get_cmap('tab10')
-    rgba = 1/9
-    # syle = ['-','--']
-    # plt.figure(figsize=(4,9))
-    for idx,var in enumerate(['u','v','T','thl','qt','uwt']):
-        plt.figure(figsize=(4,9))
-        iteration = 0
-        profiles[var].mean('time').plot(y='z',c='k',lw=3, label='Mean')
-        for day in np.unique(profiles.time.dt.day):
-            iteration +=1
-            profiles[var].sel(time='2020-02-'+str(day).zfill(2)).mean('time')\
-                .plot(y='z',c=cmap(rgba*iteration),lw=1,label='Feb-'+str(day).zfill(2))
 
-   
-    
-       
-        plt.title(var)
-        if var =='u':
-            plt.legend()
-        if var =='uwt':
-            plt.axvline(0,c='k',lw=0.5)
-        # plt.xlabel('m/s')
-        
-        plt.ylim(height_lim)
     # plt.xlim([-17,2.5])
     # plt.savefig(save_dir+'poster_mean_winds.pdf', bbox_inches="tight")
     # plt.savefig(save_dir+'DALES_winds_0203_14.pdf', bbox_inches="tight")
@@ -1061,7 +967,6 @@ exp_tend = samptend
 ############
 ####################
     
-acc_time = 3600*1
 for ii in ['thl','qt','ql','wspd']:
 # for ii in ['qttendlsall','utendlsall']:
     if ii == 'qt': 
@@ -1401,11 +1306,10 @@ plt.ylabel('Tot tendency (m/s /hour)')
 plt.xlabel('LS tendency (m/s /hour)')
 plt.title(model+': '+var+' in layer '+str(layer),size=20)
 #%% time series of tendencies
-layer = [800,1200]
+layer = [0,750]
 var = 'u'
 rol = 10
 composite = False
-acc_time = 3600*1
 
 dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).mean('z')\
     .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
