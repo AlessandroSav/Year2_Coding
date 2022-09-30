@@ -34,7 +34,7 @@ def logic(index,first_line=4):
 # t   = total grid laevel 
 # m   = middle of the grid 
 
-heights=[650,]
+heights=[200,650,1500]
 levels =151
 
 ## running on staffumbrella
@@ -108,6 +108,8 @@ moments['time'] = srt_time + moments.time.astype("timedelta64[s]")
 
 
 time=np.empty(0,dtype='datetime64')
+## organisation metric
+df_org = pd.DataFrame()
 ## profiles
 u_prof = np.empty([0,len(zt)])
 v_prof = np.empty([0,len(zt)])
@@ -151,6 +153,23 @@ for casenr in expnr:
     # lp = 
     ## running on Local
     lp   = base_dir_scale+'/Exp_'+casenr
+    
+    ## read organisation metrics
+    df_org_temp = pd.read_hdf(lp+'/df_metrics.h5')
+    ##################
+    ############
+    if (int(casenr) % 2) == 0:
+        start_d = int(casenr)//2 +1
+    else:
+        start_d = int(casenr)//2 +2
+    start_h = 0
+    ###### Exp_001 and Exp_002 have wrong times
+    if casenr == '001' or casenr=='002':
+        df_org_temp.index = df_org_temp.index + 34385400  +1800
+    df_org_temp.index = np.array(df_org_temp.index,dtype='timedelta64[s]') + \
+        (np.datetime64('2020-02-'+str(start_d).zfill(2)+'T'+str(start_h).zfill(2)+':00'))
+    ############
+    ##################
     
     ih = 0
     ### These variables should be the same for all heights, so only open one
@@ -219,6 +238,8 @@ for casenr in expnr:
         
     ## Append all times together
     time = np.append(time,time_temp)
+    ## org metrics
+    df_org  = df_org.append(df_org_temp)
     ## profiles
     u_prof  =   np.append(u_prof,u_prof_temp,0)
     v_prof  =   np.append(v_prof,v_prof_temp,0)
@@ -256,7 +277,12 @@ for casenr in expnr:
     vw_psf      = np.append(vw_psf,     vw_psf_temp,    2)
     
     
-#%%   
+#%%   Convert to Xarray and Save 
+## organisation metrics
+df_org = df_org.apply(pd.to_numeric)
+df_org = df_org.to_xarray().rename({'index':'time'})
+# df_org.to_netcdf(save_dir+'df_org_allExp.nc')
+## scales 
 da_scales = xr.Dataset(
     {'u_pf':(
         ('height','klp','time'),
@@ -281,6 +307,7 @@ da_scales['w_av']       =(('height','time'),w_av)
 
 # da_scales.to_netcdf(save_dir+'scale_sep_allExp.nc')
 
+## scale profiles
 da_scales_prof = xr.Dataset(
     {'u_pf_prof':(
         ('klp','time','height'),
@@ -302,7 +329,6 @@ da_scales_prof['vw_psf']     =(('klp','time','height'),vw_psf_prof)
 da_scales_prof['u_av']       =(('time','height'),u_prof)
 da_scales_prof['v_av']       =(('time','height'),v_prof)
 da_scales_prof['w_av']       =(('time','height'),w_prof)
-
 
 ## fill the gap caused when creating files
 da_scales_prof = da_scales_prof.where(da_scales_prof!=0)
