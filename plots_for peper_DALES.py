@@ -512,6 +512,7 @@ fig, axs = plt.subplots(3,1,figsize=(19,19))
 profiles.cfrac.plot(y="z",cmap=plt.cm.Blues_r,vmax=0.1,vmin=0,ax=axs[0]\
                     ,cbar_kwargs=dict(orientation='horizontal',
                         pad=0.03, shrink=0.5,label='Fraction'))
+# h.plot(ax=axs[0])
 ax2 = axs[0].twinx()
 profiles.rain.sel(z=slice(0,50)).mean('z').rolling(time=6, center=True)\
     .mean().plot(x='time',ax=ax2,c='r',ls='-',label='Rain')
@@ -624,6 +625,9 @@ for idx,var in enumerate(['u','v','thl','qt']):
         # axs[idx].set_xlim([300,330])
         axs[idx].legend(fontsize=15)
 plt.tight_layout()
+for n, ax in enumerate(axs):
+    ax.text(0.03, 0.97, string.ascii_uppercase[n], transform=ax.transAxes, 
+            size=13)
 plt.savefig(save_dir+'Figure2_profiles.pdf', bbox_inches="tight")    
 ##################
 #%% ## FIGURE 3 ##
@@ -683,156 +687,303 @@ plt.savefig(save_dir+'Figure3_momFlux.pdf', bbox_inches="tight")
 
 ##################
 #%% ## FIGURE 5 ##
-for var in ['u_psfw_psf','v_psfw_psf']:
-    fig, axs = plt.subplots(3,2,figsize=(12,12))
-    for idcol in [0,1]:
-        if idcol==0:
-            # no normalisations
-            da_toplot = da_scales_norm
-        elif idcol==1:
-            # normalise y axis
-            da_toplot = da_scales_norm
-        elif idcol==2:
-            # normalise x and y axes
-            da_toplot = da_scales_norm
-            
-        for idx,ih in enumerate(range(len(da_scales.height))):   
-            iteration =0
-            for day in ['02','03','04','05','06','07','08','09']:
-                iteration +=1
-                if idcol==1:
-                    axs[idx,idcol].plot(da_scales['f_scales_norm'].\
-                    resample(time='8h').mean('time').sel(time='2020-02-'+day),\
-                      da_toplot.resample(time='8h').median('time')\
-                          [var].isel(height=ih).sel(time='2020-02-'+day).T\
-                        ,c=cmap(rgba*iteration),label=day)  
-                else:
-                    axs[idx,idcol].plot(f_scales/1000,\
-                      da_toplot.resample(time='8h').median('time')\
-                          [var].isel(height=ih).sel(time='2020-02-'+day).T\
-                        ,c=cmap(rgba*iteration))   
-            axs[idx,idcol].set_xscale('log')
-            
-            axs[idx,idcol].axhline(0,c='k',lw=0.5)
-            axs[idx,0].axvline(2.5,c='k',lw=0.5)
-            if idcol == 0:
-                axs[idx,idcol].set_ylabel('At '+str(da_scales.height[ih].values)+' m')
-            axs[idx,idcol].set_ylim([-0.1,1.1])
-            axs[idx,1].yaxis.set_visible(False) 
+honnert = True
+fig, axs = plt.subplots(3,2,figsize=(12,12))
+for idcol, var in enumerate(['u_psfw_psf','v_psfw_psf']):
+    # normalised y axis
+    da_toplot = da_scales_norm
+    for idx,ih in enumerate(range(len(da_scales.height))):   
+        iteration =0
+        for day in ['02','03','04','05','06','07','08','09']:
+            iteration +=1
+            if honnert==True:
+                axs[idx,idcol].plot(da_scales['f_scales_norm'].\
+                resample(time='8h').mean('time').sel(time='2020-02-'+day),\
+                  da_toplot.resample(time='8h').median('time')\
+                      [var].isel(height=ih).sel(time='2020-02-'+day).T\
+                    ,c=cmap(rgba*iteration),label=day)  
+                axs[idx,idcol].axvline(1,c='k',lw=0.5)
+            else:
+                axs[idx,idcol].plot(f_scales/1000,\
+                  da_toplot.resample(time='8h').median('time')\
+                      [var].isel(height=ih).sel(time='2020-02-'+day).T\
+                    ,c=cmap(rgba*iteration))   
+                axs[idx,idcol].axvline(2.5,c='k',lw=0.5)
+        axs[idx,idcol].set_xscale('log')
+        
+        axs[idx,idcol].axhline(0,c='k',lw=0.5)
+        
+        
+        if idcol == 0:
+            axs[idx,idcol].set_ylabel('Flux partition \n at '+str(da_scales.height[ih].values)+' m')
+        axs[idx,idcol].set_ylim([-0.15,1.15])
+        axs[idx,1].yaxis.set_visible(False) 
     
     # axs[0,2].legend()
-        
-    axs[2,0].set_xlabel(r'Filter size ($km$)')
-    axs[2,0].set_xlabel(r'Filter size $\Delta x$ ($km$)')
-    axs[2,1].set_xlabel(r'Dimentionless $\frac{\Delta x}{h_b}$ ')
-    axs[0,0].set_title('Standardized y axis',fontsize=21)  
-    axs[0,1].set_title('Standardized y axis \n and dimentionless x axis',fontsize=21)  
+    if honnert==True:
+        axs[2,idcol].set_xlabel(r'Dimentionless $\frac{\Delta x}{h_b}$ ')
+    else:
+        axs[2,idcol].set_xlabel(r'Filter size $\Delta x$ ($km$)')
+
+axs[0,0].set_title('Zonal momentum flux',fontsize=21)  
+axs[0,1].set_title('Meridional momentum flux',fontsize=21)  
     
     
-    
-    for n, ax in enumerate(axs.flat):
-        ax.text(0.08, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
-                size=13)
-    plt.tight_layout()
-    plt.savefig(save_dir+'Figure5_'+var[0]+'_momFlux_spectra.pdf', bbox_inches="tight")  
 
-##################
-#%% ## FIGURE 7 ##
-org_metric = 'iorg'
-for var in ['u_psfw_psf','v_psfw_psf']:
-    fig, axs = plt.subplots(3,2,figsize=(12,12))
-    for idgroup in [0,1]:
-        if idgroup==0:
-        ### grouping by rain rate            
-            time_g1 = profiles.where(profiles.rain.sel(z=slice(0,50)).mean('z').\
-                              rolling(time=6, center=True).mean()<0.15,drop=True).time
-            time_g3 = profiles.where(profiles.rain.sel(z=slice(0,50)).mean('z').\
-                                     rolling(time=6, center=True).mean()>0.75,drop=True).time
-            time_g2 = profiles.where(np.logical_not(profiles.time.\
-                                    isin(xr.concat((time_g1,time_g3),'time'))),drop=True).time
-            ########
-        elif idgroup==1:
-        ### grouping by organisation 
-            time_g1 = profiles.where(da_org_norm[org_metric] < \
-                                        da_org_norm[org_metric].quantile(0.25),drop=True).time
-            time_g3 = profiles.where(da_org_norm[org_metric] > \
-                                        da_org_norm[org_metric].quantile(0.75),drop=True).time
-            time_g2 = profiles.where(np.logical_not(profiles.time.\
-                                    isin(xr.concat((time_g1,time_g3),'time'))),drop=True).time
-            
-        ##
-        time_g1 = time_g1.where(time_g1.isin(da_scales.time),drop=True)
-        time_g2 = time_g2.where(time_g2.isin(da_scales.time),drop=True)
-        time_g3 = time_g3.where(time_g3.isin(da_scales.time),drop=True)
-            
-        for idx,ih in enumerate(range(len(da_scales.height))):            
-            axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].isel(height=ih).sel(time=time_g1).median('time'),\
-                      lw=2.5,c='orange',label='Group 1')
-            axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].isel(height=ih).sel(time=time_g2).median('time'),\
-                      lw=2.5,c='b',label='Group 2')
-            axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].isel(height=ih).sel(time=time_g3).median('time'),\
-                      lw=2.5,c='green',label='Group 3')
-                
-        # plt.ylim([-0.02,+0.02])
-            
-            axs[idx,idgroup].set_xscale('log')
-            axs[idx,idgroup].axhline(0,c='k',lw=0.5)
-            axs[idx,idgroup].axvline(2.5,c='k',lw=0.5)
-            
-            if idgroup == 0:
-                axs[idx,idgroup].set_ylabel('At '+str(da_scales.height[ih].values)+' m')
-        axs[0,idgroup].legend()
-    axs[0,0].set_title('Grouping by rain rate',fontsize=24)  
-    axs[0,1].set_title('Grouping by organisation',fontsize=24)  
-    
-    for n, ax in enumerate(axs.flat):
-        ax.text(0.08, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
-                size=13)
-    plt.tight_layout()
-    plt.savefig(save_dir+'Figure7_'+var[0]+'_spectra_groups.pdf', bbox_inches="tight")  
-
-##################
-#%% ## FIGURE 6 ##
-## Plot rain rate time series
-plt.figure(figsize=(19,5))
-profiles.rain.sel(z=slice(0,50)).mean('z').rolling(time=6, center=True).mean().plot(c='k')
-# moments.ctop_var.plot(c='r')
-plt.scatter(profiles.time.sel(time=time_g1),profiles.rain.sel(z=slice(0,50))\
-            .mean('z').rolling(time=6, center=True).mean().sel(time=time_g1),c='orange',label='Group 1')
-plt.scatter(profiles.time.sel(time=time_g2),profiles.rain.sel(z=slice(0,50))\
-            .mean('z').rolling(time=6, center=True).mean().sel(time=time_g2),c='b',label='Group 2')
-plt.scatter(profiles.time.sel(time=time_g3),profiles.rain.sel(z=slice(0,50))\
-            .mean('z').rolling(time=6, center=True).mean().sel(time=time_g3),c='green',label='Group 3')
-
-
-plt.legend()
-plt.title('Surface rain rate',fontsize=22)
-for ii in np.arange(srt_time, end_time):
-    plt.axvline(x=ii,c='k')
-
-plt.xlabel(None)
+for n, ax in enumerate(axs.flat):
+    ax.text(0.08, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
+            size=13)
+plt.tight_layout()
+plt.savefig(save_dir+'Figure5_momFlux_spectra.pdf', bbox_inches="tight")  
 ##################
 #%% ## FIGURE 6 ##
 # The box extends from the lower to upper quartile values of the data,
 # with a line at the median. 
 # The whiskers extend from the box to show the range of the data
+
+da_to_plot = da_scales_norm.where(abs(da_scales.f_scales_norm-1)<=\
+                                  abs(da_scales.f_scales_norm-1).min('klp').max(),\
+                                      drop=True)    
 ih = 650
 fig, axs = plt.subplots(2,1,figsize=(12,7))
 for idx, var in enumerate(['u_psfw_psf','v_psfw_psf']):
-    iteration=-0.4
-    for day in ['02','03','04','05','06','07','08','09']:
+    if 'lab' in locals(): del lab
+    if 'x_ax' in locals(): del x_ax
+    iteration=-0.4                            
+    for day in ['02','03','04','05','06','07','08','09','10']:
         iteration +=0.4
-        for hour in ['00','12']:
+        if day =='10': list_hours=['00','08']
+        else: list_hours=['00','08','16']
+        for hour in list_hours:
             iteration +=0.3
-            axs[idx].boxplot(da_scales_norm[var].sel(time=slice('2020-02-'+day+'T'+hour,\
-                                    '2020-02-'+day+'T'+str(int(hour)+11)+':55'))\
-                        .sel(height=ih,klp=30,method='nearest').values,\
+            axs[idx].boxplot(da_to_plot[var].sel(time=slice('2020-02-'+day+'T'+hour,\
+                                    '2020-02-'+day+'T'+str(int(hour)+7)+':55'))\
+                        .sel(height=ih,method='nearest').mean('klp').values,\
                             positions=[round(iteration,1)],\
-                    whis=2,showfliers=False,showmeans=True,meanline=False,widths=0.25)
-    
+                    whis=1.8,showfliers=False,showmeans=True,meanline=False,widths=0.25,\
+                        medianprops=dict(color="r", lw=2))   
+        
+            if 'lab' in locals():
+                lab=np.append(lab,day+'-'+str(int(hour)+4))
+                x_ax=np.append(x_ax,iteration)
+            else:
+                lab = day+'-'+str(int(hour)+4)
+                x_ax=iteration
+            
+    axs[idx].plot(x_ax,da_to_plot[var].sel(height=ih,method='nearest')\
+                    .mean('klp').resample(time='8h').median('time'),c='r',lw=1)
     axs[idx].axhline(0,c='k',lw=0.5)
-axs[0].set_ylim([-0,1.4])
-axs[1].set_ylim([-0.45,2.1])
+    axs[idx].set_xticklabels(lab, rotation=45 )
+    axs[idx].set_ylabel('Flux partition \n at '+str(ih)+' m')
+    axs[idx].set_ylim([-0.15,1.35])
+
+axs[0].set_title('Zonal momentum flux - ' +r'Mesh $\frac{\Delta x}{h_b} = 1$',fontsize=21) 
+axs[1].set_title('Meridional momentum flux - ' +r'Mesh $\frac{\Delta x}{h_b} = 1$',fontsize=21) 
+
+
+for n, ax in enumerate(axs.flat):
+    ax.text(0.97, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
+            size=13)
+plt.tight_layout()
+plt.savefig(save_dir+'Figure6_boxplot.pdf', bbox_inches="tight")  
+##################
+#%%
+time_g1={}
+time_g2={}
+time_g3={}
+
+for group in ['rain','iorg','du_dz','zi']:
+    if group == 'rain':
+    ### grouping by rain rate            
+        time_g1[group] = profiles.where(profiles[group].sel(z=slice(0,50)).mean('z').\
+                          rolling(time=6, center=True).mean() <= np.quantile(profiles[group].sel(z=slice(0,50)).mean('z').\
+                                        values,0.25),drop=True).time
+        time_g3[group] = profiles.where(profiles[group].sel(z=slice(0,50)).mean('z').\
+                                  rolling(time=6, center=True).mean()>= np.quantile(profiles[group].sel(z=slice(0,50)).mean('z').\
+                                        values,0.75),drop=True).time
+    if group == 'du_dz':
+    ###             
+        time_g1[group] = profiles.where(profiles[group].sel(z=slice(0,50)).mean('z')\
+                          <= np.quantile(profiles[group].sel(z=slice(0,50)).mean('z').\
+                                        values,0.25),drop=True).time
+        time_g3[group] = profiles.where(profiles[group].sel(z=slice(0,50)).mean('z')\
+                          >= np.quantile(profiles[group].sel(z=slice(0,50)).mean('z').\
+                                        values,0.75),drop=True).time
+            
+    elif group=='zi':
+    ### grouping by boundary layer height            
+        time_g1[group] = profiles.where(tmser[group] <= \
+                                    np.quantile(tmser[group].values,0.25),drop=True).time
+        time_g3[group] = profiles.where(tmser[group] >= \
+                                    np.quantile(tmser[group].values,0.75),drop=True).time
+        ########
+    elif group in da_org_norm:
+    ### grouping by organisation 
+        time_g1[group] = profiles.where(da_org[group] <= \
+                                    da_org[group].quantile(0.25),drop=True).time
+        time_g3[group] = profiles.where(da_org[group] >= \
+                                    da_org[group].quantile(0.75),drop=True).time
+    
+    time_g2[group] = profiles.where(np.logical_not(profiles.time.\
+                            isin(xr.concat((time_g1[group],time_g3[group]),'time'))),drop=True).time
+        
+    ##
+    time_g1[group] = time_g1[group].where(time_g1[group].isin(da_scales.time),drop=True)
+    time_g2[group] = time_g2[group].where(time_g2[group].isin(da_scales.time),drop=True)
+    time_g3[group] = time_g3[group].where(time_g3[group].isin(da_scales.time),drop=True)
+#%% ## FIGURE 7 ##
+## Plot rain rate time series
+fig, axs = plt.subplots(2,1,figsize=(12,7))
+for idgroup, group in enumerate(['rain','iorg']): 
+    if group in profiles:
+        profiles[group].sel(z=slice(0,50)).mean('z').rolling(time=6, center=True).mean().plot(c='k',ax=axs[idgroup])
+        da_to_plot = profiles[group].sel(z=slice(0,50))\
+                .mean('z').rolling(time=6, center=True).mean()
+    elif group in da_org_norm:
+        da_org[group].plot(c='k',ax=axs[idgroup])
+        da_to_plot = da_org[group]     
+    elif group in tmser:
+        tmser[group].plot(c='k',ax=axs[idgroup])
+        da_to_plot = tmser[group]
+        
+    
+    # moments.ctop_var.plot(c='r')
+    axs[idgroup].scatter(profiles.time.sel(time=time_g1[group]),\
+                         da_to_plot.sel(time=time_g1[group]),c='orange',label='Group 1')
+    axs[idgroup].scatter(profiles.time.sel(time=time_g2[group]),\
+                         da_to_plot.sel(time=time_g2[group]),c='b',label='Group 2')
+    axs[idgroup].scatter(profiles.time.sel(time=time_g3[group]),\
+                         da_to_plot.sel(time=time_g3[group]),c='green',label='Group 3')
+
+
+    axs[idgroup].set_xlim([srt_time,end_time])
+axs[0].xaxis.set_visible(False) 
+axs[0].legend()
+axs[0].set_title('Surface rain-rate',fontsize=22)
+axs[0].set_ylabel(r'$mm \; h^{-1}$')
+axs[1].set_ylabel(r'$I_{org}$')
+axs[1].set_title('Organisation',fontsize=22)
+for ii in np.arange(srt_time, end_time):
+    axs[0].axvline(x=ii,c='k')
+    axs[1].axvline(x=ii,c='k')
+
+plt.xlabel(None)
+for n, ax in enumerate(axs.flat):
+    ax.text(0.97, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
+            size=13)
+plt.tight_layout()
+plt.savefig(save_dir+'Figure7_tmser_groups.pdf', bbox_inches="tight")  
+
+##################
+#%% ## FIGURE 8 ##
+for var in ['u_psfw_psf','v_psfw_psf']:
+    fig, axs = plt.subplots(3,2,figsize=(12,12))
+    for idgroup, group in enumerate(['rain','iorg']):            
+        for idx,ih in enumerate(range(len(da_scales.height))):  
+            
+            ## Non dimentional x axis
+            axs[idx,idgroup].plot(da_scales['f_scales_norm'].sel(time=time_g1[group]).mean('time'),da_scales_norm[var].isel(height=ih).sel(time=time_g1[group]).median('time'),\
+                      lw=2.5,c='orange',label='Group 1')
+            axs[idx,idgroup].plot(da_scales['f_scales_norm'].sel(time=time_g2[group]).mean('time'),da_scales_norm[var].isel(height=ih).sel(time=time_g2[group]).median('time'),\
+                      lw=2.5,c='b',label='Group 2')
+            axs[idx,idgroup].plot(da_scales['f_scales_norm'].sel(time=time_g3[group]).mean('time'),da_scales_norm[var].isel(height=ih).sel(time=time_g3[group]).median('time'),\
+                      lw=2.5,c='green',label='Group 3')
+            
+            ## dimentional x axis
+            # axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].isel(height=ih).sel(time=time_g1).median('time'),\
+            #           lw=2.5,c='orange',label='Group 1')
+            # axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].isel(height=ih).sel(time=time_g2).median('time'),\
+            #           lw=2.5,c='b',label='Group 2')
+            # axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].isel(height=ih).sel(time=time_g3).median('time'),\
+            #           lw=2.5,c='green',label='Group 3')
+                
+        # plt.ylim([-0.02,+0.02])
+            
+            axs[idx,idgroup].set_xscale('log')
+            axs[idx,idgroup].axhline(0,c='k',lw=0.5)
+            axs[idx,idgroup].axvline(1,c='k',lw=0.5)
+            
+            if idgroup == 0:
+                axs[idx,idgroup].set_ylabel('Flux partition \n at '+str(da_scales.height[ih].values)+' m')
+        axs[0,idgroup].legend(loc='lower right')
+    axs[0,0].set_title('Grouping by rain-rate',fontsize=24)  
+    axs[0,1].set_title(r'Grouping by $I_{org}$',fontsize=24)  
+    
+    for n, ax in enumerate(axs.flat):
+        ax.text(0.08, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
+                size=13)
+    plt.tight_layout()
+    plt.savefig(save_dir+'Figure8_'+var[0]+'_spectra_groups.pdf', bbox_inches="tight")  
+
+##################
+#%% ## FIGURE 9 ##
+## Profiles
+fig, axs = plt.subplots(2,3,figsize=(12,12))
+for idvar, var in enumerate(['u','v']):
+    
+    for idx, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['iorg']]):
+
+        ## mean
+        da_scales_prof[var+"w_pf"].sel(time=sel_time).mean('time').\
+            plot(y='height',ls='-',c='r',label='Total',ax=axs[idvar,idx])
+        da_scales_prof[var+"_pfw_pf"].sel(time=sel_time).mean('time').\
+            plot(y='height',ls='-',c='k',label='Up-filter',ax=axs[idvar,idx])
+        da_scales_prof[var+"_psfw_psf"].sel(time=sel_time).mean('time').\
+            plot(y='height',ls='-',c='green',label='Sup-filter',ax=axs[idvar,idx])
+
+        ## median    
+        # da_scales_prof[var+"_pfw_pf"].sel(time=sel_time).median('time').\
+        #     plot(y='height',ls='-',c='k',ax=axs[idvar,idx])
+        # da_scales_prof[var+"_psfw_psf"].sel(time=sel_time).median('time').\
+        #     plot(y='height',ls='-',c='green',ax=axs[idvar,idx])
+        # da_scales_prof[var+"w_pf"].sel(time=sel_time).median('time').\
+        #     plot(y='height',c='r',ax=axs[idvar,idx])    
+        
+        
+        axs[idvar,idx].fill_betweenx(da_scales_prof.height,\
+                          da_scales_prof[var+"w_pf"].sel(time=sel_time).quantile(0.25,dim='time').sel(klp=30),\
+                          da_scales_prof[var+"w_pf"].sel(time=sel_time).quantile(0.75,dim='time').sel(klp=30),\
+                              color='r',alpha=0.1)
+            
+        axs[idvar,idx].fill_betweenx(da_scales_prof.height,\
+                          da_scales_prof[var+"_pfw_pf"].sel(time=sel_time).quantile(0.25,dim='time').sel(klp=30),\
+                          da_scales_prof[var+"_pfw_pf"].sel(time=sel_time).quantile(0.75,dim='time').sel(klp=30),\
+                              color='k',alpha=0.1)
+            
+        axs[idvar,idx].fill_betweenx(da_scales_prof.height,\
+                          da_scales_prof[var+"_psfw_psf"].sel(time=sel_time).quantile(0.25,dim='time').sel(klp=30),\
+                          da_scales_prof[var+"_psfw_psf"].sel(time=sel_time).quantile(0.75,dim='time').sel(klp=30),\
+                              color='g',alpha=0.1)
+
+        axs[idvar,idx].axvline(0,c='k',lw=0.5)
+        axs[0,idx].set_xlim([-0.015,0.09])
+        axs[1,idx].set_xlim([-0.028,0.041])
+        axs[idvar,idx].set_ylim([-1,4000])
+        axs[idvar,idx].set_title(var+'$\'w\'$ Group '+str(idx+1),fontsize=21)
+        
+        axs[idvar,idx].axhline(200,c='k',ls='-',lw=0.5)
+        axs[idvar,idx].axhline(650,c='k',ls='-',lw=0.5)
+        axs[idvar,idx].axhline(1500,c='k',ls='-',lw=0.5)
+        
+        if idx >0:
+            axs[idvar,idx].yaxis.set_visible(False) 
+        axs[0,idx].set_xlabel(None)
+        axs[1,idx].set_xlabel(r'$m^2 s^{-2}$')
+axs[0,0].set_ylabel(r'z ($m$)')
+axs[1,0].set_ylabel(r'z ($m$)')
+axs[0,0].legend()
+# plt.xlabel(r''+var+' momentum flux [$m^2 / s^2$]')
+# plt.ylabel('Z [m]')
+# plt.title('Partitioning of momentum flux \n Filter scale = 2.5 km')
+    
+for n, ax in enumerate(axs.flat):
+    ax.text(0.08, 0.95, string.ascii_uppercase[n], transform=ax.transAxes, 
+                size=13)
+plt.tight_layout()
+plt.savefig(save_dir+'Figure9_flux_profiles_groups.pdf', bbox_inches="tight")  
+##################
+#%% ## FIGURE 10 ##
+
 ##################
 #%% PLOT ORG METRICS
 for var in da_org_norm:
