@@ -31,8 +31,8 @@ save_data_dir   = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES_a
 itmin = 1
 itmax = 24
 di    = 8       # delta time for plots 
-izmin = 11
-izmax = 12
+izmin = 5
+izmax = 7
 store = False
 klps = [30,]         ## halfh the number of grids after coarsening 
 #domain size from namotions
@@ -89,8 +89,8 @@ dzmlim = dzm[izmin:izmax-1]
 ##########
 ##########
 # import averaged variables 
-# profiles = xr.open_mfdataset(lp+'/profiles.'+casenr+'.nc')
-# profiles['time'] = np.datetime64('2020-02-02') + profiles.time.astype("timedelta64[s]")
+profiles = xr.open_mfdataset(lp+'/profiles.'+casenr+'.nc')
+profiles['time'] = np.datetime64('2020-02-02') + profiles.time.astype("timedelta64[s]")
 # samptend = xr.open_mfdataset(lp+'/samptend.'+casenr+'.nc' )
 # ##########
 ##########
