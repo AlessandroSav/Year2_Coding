@@ -34,7 +34,7 @@ def logic(index,first_line=4):
 # t   = total grid laevel 
 # m   = middle of the grid 
 
-heights=[200,650,1500]
+heights=[200,650,1500,2600]
 levels =151
 
 ## running on staffumbrella
@@ -664,8 +664,9 @@ for ii in np.arange(srt_time, end_time):
 
 
 #%%
-plt.figure()
+# plt.figure()
 for ih in range(len(heights)):
+    plt.figure()
     # plt.plot(f_scales/1000,da_scales.u_psfw_psf.isel(height=ih).sel(time=time_g1),\
     #           lw=0.5,alpha=0.5,c='orange')
     # plt.plot(f_scales/1000,da_scales.u_psfw_psf.isel(height=ih).sel(time=time_g2),\
@@ -673,11 +674,11 @@ for ih in range(len(heights)):
     # plt.plot(f_scales/1000,da_scales.u_psfw_psf.isel(height=ih).sel(time=time_g3),\
     #           lw=0.5,alpha=0.5,c='green')
         
-    plt.plot(f_scales/1000,da_scales.u_psfw_psf.isel(height=ih).sel(time=time_g1).mean('time'),\
+    plt.plot(f_scales/1000,da_scales.u_psfw_psf.isel(height=ih).sel(time=time_g1).median('time'),\
               lw=2.5,c='orange',label='Group 1')
-    plt.plot(f_scales/1000,da_scales.u_psfw_psf.isel(height=ih).sel(time=time_g2).mean('time'),\
+    plt.plot(f_scales/1000,da_scales.u_psfw_psf.isel(height=ih).sel(time=time_g2).median('time'),\
               lw=2.5,c='b',label='Group 2')
-    plt.plot(f_scales/1000,da_scales.u_psfw_psf.isel(height=ih).sel(time=time_g3).mean('time'),\
+    plt.plot(f_scales/1000,da_scales.u_psfw_psf.isel(height=ih).sel(time=time_g3).median('time'),\
               lw=2.5,c='green',label='Group 3')
         
     # plt.plot(f_scales/1000,da_scales.u_psfw_psf.isel(height=ih).sel(time=time_g4).mean('time'),\
@@ -686,44 +687,51 @@ for ih in range(len(heights)):
     #           lw=2.5,c='k')
         
 # plt.ylim([-0.02,+0.02])
-plt.xscale('log')
-plt.axhline(0,c='k',lw=0.5)
-plt.axvline(2.5,c='k',lw=0.5)
-plt.legend()
+    plt.xscale('log')
+    plt.title(str(heights[ih]))
+    plt.axhline(0,c='k',lw=0.5)
+    plt.axvline(2.5,c='k',lw=0.5)
+    plt.legend()
 
 #%% PROFILES 
-
+var='v'
 plt.figure(figsize=(4,6))
 ## mean
-da_scales_prof["u_pfw_pf"].mean('time').plot(y='height',ls='-',c='k',label='mean UF')
-da_scales_prof["u_psfw_psf"].mean('time').plot(y='height',ls='-',c='green',label='mean SF')
-da_scales_prof["uw_pf"].mean('time').plot(y='height',c='r',label='mean tot')
+da_scales_prof[var+"_pfw_pf"].mean('time').plot(y='height',ls='-',c='k',label='mean UF')
+da_scales_prof[var+"_psfw_psf"].mean('time').plot(y='height',ls='-',c='green',label='mean SF')
+da_scales_prof[var+"w_pf"].mean('time').plot(y='height',c='r',label='mean tot')
 
 
 plt.fill_betweenx(da_scales_prof.height,\
-                  da_scales_prof["uw_pf"].quantile(0.1,dim='time').sel(klp=30),\
-                  da_scales_prof["uw_pf"].quantile(0.9,dim='time').sel(klp=30),\
+                  da_scales_prof[var+"w_pf"].quantile(0.1,dim='time').sel(klp=30),\
+                  da_scales_prof[var+"w_pf"].quantile(0.9,dim='time').sel(klp=30),\
                       color='r',alpha=0.2)
     
 plt.fill_betweenx(da_scales_prof.height,\
-                  da_scales_prof["u_pfw_pf"].quantile(0.1,dim='time').sel(klp=30),\
-                  da_scales_prof["u_pfw_pf"].quantile(0.9,dim='time').sel(klp=30),\
+                  da_scales_prof[var+"_pfw_pf"].quantile(0.1,dim='time').sel(klp=30),\
+                  da_scales_prof[var+"_pfw_pf"].quantile(0.9,dim='time').sel(klp=30),\
                       color='k',alpha=0.2)
     
 plt.fill_betweenx(da_scales_prof.height,\
-                  da_scales_prof["u_psfw_psf"].quantile(0.1,dim='time').sel(klp=30),\
-                  da_scales_prof["u_psfw_psf"].quantile(0.9,dim='time').sel(klp=30),\
+                  da_scales_prof[var+"_psfw_psf"].quantile(0.1,dim='time').sel(klp=30),\
+                  da_scales_prof[var+"_psfw_psf"].quantile(0.9,dim='time').sel(klp=30),\
                       color='g',alpha=0.2)
+    
+profiles[var+"wr"].mean('time').\
+        plot(y='z',ls='--',c='r',label='Total from prof')   
+    
 
 plt.axvline(0,c='k',lw=0.5)
 plt.axhline(200,c='k',ls='-',lw=0.5)
 plt.axhline(650,c='k',ls='-',lw=0.5)
 plt.axhline(1500,c='k',ls='-',lw=0.5)
+plt.ylim([-10,4100])
 plt.legend()
-plt.xlabel(r'Zonal momentum flux [$m^2 / s^2$]')
+plt.xlabel(r''+var+' momentum flux [$m^2 / s^2$]')
 plt.ylabel('Z [m]')
 plt.title('Partitioning of momentum flux \n Filter scale = 2.5 km')
 
+#%%
 sel_time = ['2020-02-09T11','2020-02-09T17']
 plt.figure(figsize=(4,6))
 ## mean

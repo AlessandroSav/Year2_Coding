@@ -40,8 +40,8 @@ for casenr in ['001','002','003','004','005','006','007','008','009','010',\
     itmin = 1       # first timestep to consider
     itmax = 24      # last timestep to consider
     di    = 1       # delta time to consider (1-> 30 min)     
-    izmin_parts =[0,23,43,63,83]
-    izmax_parts =[22,42,62,82,103] # Level 103 is 3993m
+    izmin_parts =[6]
+    izmax_parts =[20] # Level 103 is 3993m
     store = True
     #domain size from namotions
     xsize      =  150000 # m

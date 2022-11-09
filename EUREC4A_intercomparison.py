@@ -49,7 +49,7 @@ srm_typ = [6,-35, 24, -63]
 ##
 les_centre = [13.3,-57.7]
 HALO_centre = [13.3,-57.7]
-Dx = geopy.distance.distance(kilometers = 200)
+Dx = geopy.distance.distance(kilometers = 250)
 Dy = geopy.distance.distance(kilometers = 150)
 
 lat_max = Dy.destination(point=les_centre, bearing=0)
@@ -74,6 +74,61 @@ HALO_circle = gd.circle(lon=HALO_centre[1], lat=HALO_centre[0], radius=111000.)
 geoms.append(sgeom.Polygon(HALO_circle))
 les_domain = gd.circle(lon=HALO_centre[1], lat=HALO_centre[0], radius=111000.)
 geoms.append(sgeom.Polygon(HALO_circle))
+
+
+
+
+#%% vertical spacing
+class Grid:
+    def __init__(self, kmax, dz0):
+        self.kmax = kmax
+        self.dz0  = dz0
+    
+        self.z = np.zeros(kmax)
+        self.dz = np.zeros(kmax)
+        self.zsize = None
+
+    def plot(self):
+        plt.figure()
+        plt.title('zsize = {0:.1f} m'.format(self.zsize), loc='left')
+        plt.plot(self.dz, self.z, '-x')
+        plt.xlabel('dz (m)')
+        plt.ylabel('z (m)')
+class Grid_linear_stretched(Grid):
+    def __init__(self, kmax, dz0, alpha):
+        Grid.__init__(self, kmax, dz0)
+    
+        self.dz[:] = dz0 * (1 + alpha)**np.arange(kmax)
+        zh         = np.zeros(kmax+1)
+        zh[1:]     = np.cumsum(self.dz)
+        self.z[:]  = 0.5 * (zh[1:] + zh[:-1])
+        self.zsize = zh[-1]
+grid = Grid_linear_stretched(kmax=150, dz0=20, alpha=0.012)
+grid.plot()
+#%% Relaxation profile 
+def func(x, a, b, c, lev_max_change = 2400,end = 3600*6):
+    y = b * (np.pi/2+np.arctan(a* np.pi/2*(1-x/lev_max_change)))
+    y = end + y**c
+    
+    
+    # plot
+    plt.figure(figsize=(6,9))
+    plt.axhline(lev_max_change,c='k',lw=1,ls=':')
+    plt.axvline(end/3600/24,c='r',lw=1,ls=':',label='6 hours')
+    plt.axvline(5,c='r',lw=1,ls='--',label='5 days')
+    plt.plot(y/3600/24,x)
+    # plt.xlim([10e3,10e6])
+    plt.ylim([0,4000])
+    plt.xscale('log')
+    plt.legend()
+    plt.xlabel('Days')
+    plt.ylabel('Height (m)')
+    plt.title('Relaxation time scale',fontsize=24)
+    plt.savefig(save_dir+'relaxation_time_EUREC4A_intercomparison.pdf', bbox_inches="tight")
+    return y
+
+nudgefac = func(grid.z,a=2,b=3,c=6,lev_max_change=2400)
+#%%
 
 ### LARGE ###  
 plt.figure()

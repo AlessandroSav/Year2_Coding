@@ -27,7 +27,7 @@ import xarray as xr
 
 # for casenr in ['001','002','003','004','005','006','007','008','009','010',\
 #                 '011','012','013','014','015','016','017']:
-for casenr in ['011','012','013','014','015','016','017']:
+for casenr in ['001','011','012','013','014','015','016','017']:
 # for casenr in ['018','019']:
    
     print('################## \n ### Exp_'+casenr+'###')
@@ -36,7 +36,7 @@ for casenr in ['011','012','013','014','015','016','017']:
     # lp = os.path.abspath('../../../Raw_Data/Les/Eurec4a/20200202_12/Exp_'+casenr)
     # save_dir   = lp
     ## running on Local
-    lp =  '/Users/acmsavazzi/Documents/Mount/Raw_Data/Les/Eurec4a/20200202_12_clim/Exp_'+casenr
+    lp =  '/Users/acmsavazzi/Documents/Mount1/Raw_Data/Les/Eurec4a/20200202_12_clim/Exp_'+casenr
     save_dir   = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES_atECMWF/outputs/20200202_12_clim/Exp_'+casenr
     
     itmin = 1       # first timestep to consider

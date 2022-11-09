@@ -23,16 +23,16 @@ mod = 'dales'
 casenr = '003'
 # lp = '/home/hp200321/data/botany-6-768/runs/Run_40'
 # lp = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES/Experiments/20200209_10/Exp_006'
-lp = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES_atECMWF/outputs/20200202_12_clim/Exp_'+casenr
-# lp =  '/Users/acmsavazzi/Documents/Mount/Raw_Data/Les/Eurec4a/20200202_12_clim/Exp_'+casenr
+# lp = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES_atECMWF/outputs/20200202_12_clim/Exp_'+casenr
+lp =  '/Users/acmsavazzi/Documents/Mount/Raw_Data/Les/Eurec4a/20200202_12_clim/Exp_'+casenr
 
 save_data_dir   = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/DALES_atECMWF/outputs/20200202_12_clim/Exp_'+casenr
 
 itmin = 1
 itmax = 24
-di    = 8       # delta time for plots 
-izmin = 5
-izmax = 7
+di    = 12       # delta time for plots 
+izmin = 7
+izmax = 25
 store = False
 klps = [30,]         ## halfh the number of grids after coarsening 
 #domain size from namotions
@@ -134,15 +134,15 @@ for i in range(len(plttime)):
     # thlp = dl.load_thl(plttime[i], izmin, izmax)
     # qlp = dl.load_ql(plttime[i], izmin, izmax)
     u = dl.load_u(plttime[i], izmin, izmax) + cu
-    # v = dl.load_v(plttime[i], izmin, izmax) + vu
+    v = dl.load_v(plttime[i], izmin, izmax) + vu
     w = (wm1 + wm2)*0.5 ### grid is stretched !!! # from w at midlevels caclculate w at full levels
     
     # averages and perturbations 
     u_av  = np.mean(u,axis=(1,2))
-    # v_av  = np.mean(v,axis=(1,2))
+    v_av  = np.mean(v,axis=(1,2))
     w_av  = 0
     u_p   = u - u_av[:,np.newaxis,np.newaxis]
-    # v_p   = v - v_av[:,np.newaxis,np.newaxis]
+    v_p   = v - v_av[:,np.newaxis,np.newaxis]
     w_p   = w - w_av
     
     
@@ -309,8 +309,62 @@ if store:
     # np.save(lp+'/vp_wp.npy',vw_p)
     
         
- #%%       
-z_plot = 8
+
+#%% Wind field and coarsened 
+z_plot = 0
+
+fig,axs = plt.subplots(nrows=3,sharex=True,figsize=(4,12))
+sc0 = axs[0].imshow(u_p[z_plot,:,:],
+                    aspect=1,cmap='RdYlBu_r',
+                    vmin= -0.7,
+                    vmax=0.7,
+                    #vmin=np.min(u[z_plot,:,:]*0.75),
+                    # vmax=-np.min(u[z_plot,:,:]*0.5),
+                    # vmax=-1.5,
+                    extent=[0,150,0,150])
+
+axs[0].invert_yaxis()
+# axs[0].set_yticklabels(np.arange(0,150,(ysize/len(yt))/100))
+axs[0].set_ylabel(r'y [km]')
+axs[0].title.set_text('Zonal wind anomaly. Height:'+str(int(ztlim[z_plot].values))+' m')
+pos0 = axs[0].get_position()
+cbax0 = fig.add_axes([0.95, pos0.ymin, 0.01, pos0.height])
+cb0 = fig.colorbar(sc0, cax=cbax0)
+
+cb0.ax.set_ylabel(r"u' [$m s^{-1}$]", rotation=90, labelpad=15,fontsize = 18)
+
+sc1 = axs[1].imshow(u_pf[z_plot,:,:],
+                   aspect=1,cmap='RdYlBu_r',
+                   vmin= -0.7,
+                   vmax=0.7,
+                   extent=[0,150,0,150])
+axs[1].invert_yaxis()
+# axs[1].set_xlabel(r"x[km]")
+axs[1].set_ylabel(r'y [km]')
+axs[1].title.set_text('Up-filter')
+pos1 = axs[1].get_position()
+cbax1 = fig.add_axes([0.95, pos1.ymin, 0.01, pos1.height])
+cb1 = fig.colorbar(sc1, cax=cbax1)
+cb1.ax.set_ylabel(r"$m s^{-1}$", rotation=90, labelpad=15,fontsize = 18)   
+
+sc2 = axs[2].imshow(u_psf[z_plot,:,:],
+                   aspect=1,cmap='RdYlBu_r',
+                   vmin=-0.7,
+                   vmax=0.7,
+                   extent=[0,150,0,150])
+axs[2].invert_yaxis()
+axs[2].set_xlabel(r"x[km]")
+axs[2].set_ylabel(r'y [km]')
+axs[2].title.set_text('Sub-filter')
+pos2 = axs[2].get_position()
+cbax2 = fig.add_axes([0.95, pos2.ymin, 0.01, pos2.height])
+cb2 = fig.colorbar(sc2, cax=cbax2)
+cb2.ax.set_ylabel(r"$m s^{-1}$", rotation=90, labelpad=15,fontsize = 18)    
+plt.savefig(save_dir+'u_filtered'+str(int(ztlim[z_plot].values))+'m_'+np.datetime_as_string(time[plttime[i]], unit='m')+'.pdf', bbox_inches="tight")
+
+
+#%%       
+z_plot = 0
 
 fig,axs = plt.subplots(nrows=2,sharex=True,figsize=(6,8))
 sc0 = axs[0].imshow(u[z_plot,:,:],
@@ -345,8 +399,8 @@ cb1 = fig.colorbar(sc1, cax=cbax1)
 cb1.ax.set_ylabel(r"u'w' [$m^2 s^{-1} /h$]", rotation=90, labelpad=15,fontsize = 18)
 
 
-save_dir = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/Figures/'
-plt.savefig(save_dir+'field_u_uw_'+str(int(ztlim[z_plot].values))+'m_'+np.datetime_as_string(time[plttime[i]], unit='m')+'.pdf', bbox_inches="tight")
+# save_dir = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/Figures/'
+# plt.savefig(save_dir+'field_u_uw_'+str(int(ztlim[z_plot].values))+'m_'+np.datetime_as_string(time[plttime[i]], unit='m')+'.pdf', bbox_inches="tight")
 
 
 #%% Domain average 
@@ -372,6 +426,18 @@ plt.legend()
 # plt.xlim([0,0.004])
 plt.title('Mean UW, scale: '+str(round(f_scale/1000, 2))+' km')
 
+
+#%% compare winds in profiles and fields
+
+plt.figure()
+profiles.v.sel(zt=ztlim,method='nearest').sel(time=time[plttime[i]],method='nearest').plot(y='zt',ls=':',label='profiles')
+plt.plot(v_av,ztlim)
+plt.show()
+
+plt.figure()
+profiles.vwr.sel(zm=ztlim,method='nearest').sel(time=time[plttime[i]],method='nearest').plot(y='zt',ls=':',label='profiles')
+plt.plot(np.mean(v_p*w_p,axis=(1,2)),ztlim)
+plt.show()
 #%%
 ### advective term 
 # plt.figure()
