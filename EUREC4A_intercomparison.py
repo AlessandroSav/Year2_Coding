@@ -36,6 +36,10 @@ params = {'legend.fontsize': 'large',
          'figure.titlesize':20}
 pylab.rcParams.update(params)
 
+my_source_dir = os.path.abspath('{}/../../../My_source_codes')
+sys.path.append(my_source_dir)
+from My_thermo_fun import *
+
 #%%
 save_dir = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/EUREC4A-MIP/'
 import shapely.geometry as sgeom
@@ -76,7 +80,8 @@ les_domain = gd.circle(lon=HALO_centre[1], lat=HALO_centre[0], radius=111000.)
 geoms.append(sgeom.Polygon(HALO_circle))
 
 
-
+srt_time   = np.datetime64('2020-02-02T00')
+end_time   = np.datetime64('2020-02-12T00')
 
 #%% vertical spacing
 class Grid:
@@ -128,8 +133,104 @@ def func(x, a, b, c, lev_max_change = 2400,end = 3600*6):
     return y
 
 nudgefac = func(grid.z,a=2,b=3,c=6,lev_max_change=2400)
-#%%
+def logic(index,first_line=4):
+    levels=150
+    if ((index-3)%levels+3 == 0) or ((index-2)%levels+3 == 0) or (index<first_line):
+       return True
+    return False
+#%% Read forcings
 
+levels = grid.kmax
+
+era5_forcing_dir ='/Users/acmsavazzi/Documents/WORK/PhD_Year2/EUREC4A-MIP/codes/'
+era5_forcing =xr.open_mfdataset(era5_forcing_dir+'les_input_eurec4a.nc')
+
+
+base_dir        = '/Users/acmsavazzi/Documents/WORK/PhD_Year1/DATA/DALES/'
+harmonie_forcing_dir = base_dir  + 'DALES/Cases/EUREC4A/20200202_12_300km_clim/'
+
+####     ls_flux.inp    ####
+# hrs_inp = ((end_time - srt_time)/np.timedelta64(1, 'h')).astype(int)+1
+with open(harmonie_forcing_dir+'ls_flux.inp.001') as f:
+    hrs_inp = 0
+    for line in f:
+        if '(s)' in line: hrs_inp = 0
+        else: hrs_inp += 1  # number of timesteps in input files 
+        if "z (m)" in line: break
+    hrs_inp -= 3
+# first read the surface values
+print("Reading input surface fluxes.")
+colnames = ['time','wthl_s','wqt_s','th_s','qt_s','p_s']
+ls_surf = pd.read_csv(harmonie_forcing_dir+'ls_flux.inp.001',header = 3,nrows=hrs_inp,\
+                     names=colnames,index_col=False,delimiter = " ")
+ls_surf.set_index(['time'], inplace=True)
+ls_surf = ls_surf.to_xarray()
+ls_surf['time'] = srt_time + ls_surf.time.astype("timedelta64[s]")
+ls_surf.time.attrs["units"] = "UTC"
+# ls_surf=ls_surf.sel(time=slice(srt_plot,end_time))
+
+# second read the profiles
+print("Reading input forcing profiles.")
+colnames = ['z','u_g','v_g','w_ls','dqtdx','dqtdy','dqtdt','dthldt','dudt','dvdt']
+skip = 0
+with open(harmonie_forcing_dir+'ls_flux.inp.001') as f:
+    for line in f:
+        if line and line != '\n':
+            skip += 1
+        else:
+            break
+ls_flux    = pd.read_csv(harmonie_forcing_dir+'ls_flux.inp.001',\
+           skiprows=lambda x: logic(x,skip+1),comment='#',\
+           delimiter = " ",names=colnames,index_col=False)
+# somehow it still reads the header every hour, so...    
+ls_flux = ls_flux.dropna()
+ls_flux = ls_flux.apply(pd.to_numeric, errors='coerce')
+ls_flux['time'] = (ls_flux.index.values//levels)
+ls_flux.set_index(['time', 'z'], inplace=True)
+ls_flux = ls_flux.to_xarray()
+ls_flux['time'] = srt_time + ls_flux.time.astype("timedelta64[h]") - np.timedelta64(30, 'm')
+ls_flux['time'] = np.insert(ls_flux['time'][1:],0,srt_time)
+ls_flux.time.attrs["units"] = "UTC"
+ls_surf['T_s'] = calc_T(ls_surf['th_s'],ls_surf['p_s'])
+
+
+ls_flux = ls_flux.resample(time='1H').mean()
+
+#%%
+plt.figure(figsize=(11,5))
+era5_forcing.ps.plot(lw=2.5,label='ERA5')
+ls_surf.p_s.plot(label='HARMONIE')
+plt.legend()
+
+plt.figure(figsize=(11,5))
+era5_forcing.sst.plot(lw=2.5,label='ERA5 sst')
+ls_surf.T_s.plot(label='HARMONIE')
+era5_forcing.ts.plot(label='ERA5 skin')
+plt.legend()
+#%%
+layer=[100,300]
+var='v'
+
+plt.figure(figsize=(11,5))
+era5_forcing['dt'+var+'_advec'].sel(z=slice(layer[0],layer[1])).mean('z').plot(lw=2.5,label='ERA5')
+ls_flux['d'+var+'dt'].sel(z=slice(layer[0],layer[1])).mean('z').plot(label='HARMONIE')
+plt.legend()
+plt.title(var+' tendency between '+str(layer)+' m',fontsize=20)
+
+
+plt.figure(figsize=(11,5))
+era5_forcing['dt'+var+'_advec'].sel(z=slice(layer[0],layer[1])).mean('z').rolling(time=8, center=True).mean().plot(lw=2.5,label='ERA5')
+ls_flux['d'+var+'dt'].sel(z=slice(layer[0],layer[1])).mean('z').rolling(time=8, center=True).mean().plot(label='HARMONIE')
+plt.legend()
+plt.title(var+' tendency between '+str(layer)+' m',fontsize=20)
+
+plt.figure(figsize=(11,5))
+(era5_forcing['dt'+var+'_advec'].sel(z=slice(layer[0],layer[1])).mean('z')-ls_flux['d'+var+'dt'].sel(z=slice(layer[0],layer[1])).mean('z')).plot(lw=2.5,label='ERA5 - HARMONIE')
+plt.legend()
+plt.title(var+' tendency between '+str(layer)+' m',fontsize=20)
+
+
+#%%
 ### LARGE ###  
 plt.figure()
 # ax =cape.sel(time=ii)[var].plot(vmin=0,vmax=1,\

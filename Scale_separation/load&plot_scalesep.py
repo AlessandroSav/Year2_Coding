@@ -235,6 +235,8 @@ for casenr in expnr:
         uw_psf_temp[ih,:,:] = np.load(lp+'/scale_uw_psf_'+str(heights[ih])+'_'+casenr+'.npy', allow_pickle=True)
         vw_pf_temp[ih,:,:]   = np.load(lp+'/scale_vw_pf_'+str(heights[ih])+'_'+casenr+'.npy', allow_pickle=True)
         vw_psf_temp[ih,:,:] = np.load(lp+'/scale_vw_psf_'+str(heights[ih])+'_'+casenr+'.npy', allow_pickle=True)
+        qtw_pf_temp[ih,:,:]   = np.load(lp+'/scale_qtw_pf_'+str(heights[ih])+'_'+casenr+'.npy', allow_pickle=True)
+        qtw_psf_temp[ih,:,:] = np.load(lp+'/scale_qtw_psf_'+str(heights[ih])+'_'+casenr+'.npy', allow_pickle=True)        
         
     ## Append all times together
     time = np.append(time,time_temp)
@@ -244,37 +246,53 @@ for casenr in expnr:
     u_prof  =   np.append(u_prof,u_prof_temp,0)
     v_prof  =   np.append(v_prof,v_prof_temp,0)
     w_prof  =   np.append(w_prof,w_prof_temp,0)
+    vqt_prof  =   np.append(qt_prof,qt_prof_temp,0)
+
     
     u_pf_prof   =   np.append(u_pf_prof,u_pf_prof_temp,1)
     v_pf_prof   =   np.append(v_pf_prof,v_pf_prof_temp,1)
     w_pf_prof   =   np.append(w_pf_prof,w_pf_prof_temp,1)
+    qt_pf_prof   =   np.append(qt_pf_prof,qt_pf_prof_temp,1)
+
     
     u_pfw_pf_prof   = np.append(u_pfw_pf_prof,u_pfw_pf_prof_temp,1)
     v_pfw_pf_prof   = np.append(v_pfw_pf_prof,v_pfw_pf_prof_temp,1)
+    qt_pfw_pf_prof   = np.append(qt_pfw_pf_prof,qt_pfw_pf_prof_temp,1)
     u_psfw_psf_prof = np.append(u_psfw_psf_prof,u_psfw_psf_prof_temp,1)
     v_psfw_psf_prof = np.append(v_psfw_psf_prof,v_psfw_psf_prof_temp,1)
+    qt_psfw_psf_prof = np.append(qt_psfw_psf_prof,qt_psfw_psf_prof_temp,1)
+
     
     uw_pf_prof  = np.append(uw_pf_prof,uw_pf_prof_temp,1)
     vw_pf_prof  = np.append(vw_pf_prof,vw_pf_prof_temp,1)
+    qtw_pf_prof  = np.append(qtw_pf_prof,qtw_pf_prof_temp,1)
     uw_psf_prof = np.append(uw_psf_prof,uw_psf_prof_temp,1)
     vw_psf_prof = np.append(vw_psf_prof,vw_psf_prof_temp,1)
-    
+    qtw_psf_prof = np.append(qtw_psf_prof,qtw_psf_prof_temp,1)
+
+
     ## spectra
     u_av=np.append(u_av,u_av_temp,1)
     v_av=np.append(v_av,v_av_temp,1)
     w_av=np.append(w_av,w_av_temp,1)
+    qt_av=np.append(qt_av,qt_av_temp,1)
     #
     u_pf=np.append(u_pf,u_pf_temp,2)
     v_pf=np.append(v_pf,v_pf_temp,2)
     w_pf=np.append(w_pf,w_pf_temp,2)
+    qt_pf=np.append(qt_pf,qt_pf_temp,2)
     u_pfw_pf    = np.append(u_pfw_pf,   u_pfw_pf_temp,  2)
     u_psfw_psf  = np.append(u_psfw_psf, u_psfw_psf_temp,2)
     v_pfw_pf    = np.append(v_pfw_pf,   v_pfw_pf_temp,  2)
     v_psfw_psf  = np.append(v_psfw_psf, v_psfw_psf_temp,2)
+    qt_pfw_pf    = np.append(qt_pfw_pf,   qt_pfw_pf_temp,  2)
+    qt_psfw_psf  = np.append(qt_psfw_psf, qt_psfw_psf_temp,2)
     uw_pf       = np.append(uw_pf,      uw_pf_temp,     2)
     uw_psf      = np.append(uw_psf,     uw_psf_temp,    2)
     vw_pf       = np.append(vw_pf,      vw_pf_temp,     2)
     vw_psf      = np.append(vw_psf,     vw_psf_temp,    2)
+    qtw_pf       = np.append(qtw_pf,      qtw_pf_temp,     2)
+    qtw_psf      = np.append(qtw_psf,     qtw_psf_temp,    2)
     
     
 #%%   Convert to Xarray and Save 
@@ -292,20 +310,26 @@ da_scales = xr.Dataset(
 
 da_scales['v_pf']       =(('height','klp','time'),v_pf)
 da_scales['w_pf']       =(('height','klp','time'),w_pf)
+da_scales['qt_pf']       =(('height','klp','time'),qt_pf)
 da_scales['u_pfw_pf']   =(('height','klp','time'),u_pfw_pf)
 da_scales['u_psfw_psf'] =(('height','klp','time'),u_psfw_psf)
 da_scales['v_pfw_pf']   =(('height','klp','time'),v_pfw_pf)
 da_scales['v_psfw_psf'] =(('height','klp','time'),v_psfw_psf)
+da_scales['qt_pfw_pf']   =(('height','klp','time'),qt_pfw_pf)
+da_scales['qt_psfw_psf'] =(('height','klp','time'),qt_psfw_psf)
 da_scales['uw_pf']      =(('height','klp','time'),uw_pf)
 da_scales['uw_psf']     =(('height','klp','time'),uw_psf)
 da_scales['vw_pf']      =(('height','klp','time'),vw_pf)
 da_scales['vw_psf']     =(('height','klp','time'),vw_psf)
+da_scales['qtw_pf']      =(('height','klp','time'),qtw_pf)
+da_scales['qtw_psf']     =(('height','klp','time'),qtw_psf)
 
 da_scales['u_av']       =(('height','time'),u_av)
 da_scales['v_av']       =(('height','time'),v_av)
 da_scales['w_av']       =(('height','time'),w_av)
+da_scales['qt_av']       =(('height','time'),qt_av)
 
-# da_scales.to_netcdf(save_dir+'scale_sep_allExp.nc')
+da_scales.to_netcdf(save_dir+'scale_sep_allExp.nc')
 
 ## scale profiles
 da_scales_prof = xr.Dataset(
@@ -364,6 +388,7 @@ da_scales_norm = (da_scales)/(da_scales.sel(klp=min(klps)))
 cmap = matplotlib.cm.get_cmap('tab10')
 ######## All hours non normalized 
 ###
+var = 'qt'
 plt.figure(figsize=(10,7))
 rgba = 1/8
 iteration=0
@@ -371,10 +396,10 @@ for ih in range(len(heights)):
     for day in ['02','03','04','05','06','07','08','09']:
         iteration += 1
         plt.plot(f_scales/1000,\
-                  da_scales.u_psfw_psf.isel(height=ih).sel(time='2020-02-'+day),\
+                  da_scales[var+'_psfw_psf'].isel(height=ih).sel(time='2020-02-'+day),\
               lw=0.5,alpha=0.5,c=cmap(rgba*iteration))
         plt.plot(f_scales/1000,\
-                  da_scales.u_psfw_psf.isel(height=ih).sel(time='2020-02-'+day)\
+                  da_scales[var+'_psfw_psf'].isel(height=ih).sel(time='2020-02-'+day)\
                       .median('time'),\
               lw=3,label='Feb-'+day,c=cmap(rgba*iteration))
         
@@ -386,7 +411,7 @@ plt.axvline(2.5,c='k',lw=0.5)
 plt.legend(frameon=False,fontsize=12)
 plt.ylabel(r'Flux [$m^2/s^2$]',fontsize=18)
 plt.xlabel(r'Filter size [km]',fontsize=18)
-plt.suptitle('Sub-filter zonal momentum flux \n Mean per day - at '+str(heights[ih])+' m',fontsize=20)
+plt.suptitle('Sub-filter '+var+' flux \n Mean per day - at '+str(heights[ih])+' m',fontsize=20)
 
 #%% FIGURE 2
 plt.figure(figsize=(10,7))
