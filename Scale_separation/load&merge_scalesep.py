@@ -37,10 +37,10 @@ def logic(index,first_line=4):
 variables=['qt',]
 prof = False
 # heights=[100,200,650,1500,2600]
-heights=[100,]
+heights=[100,'subCL']
 levels =151
 
-save_ext = '100m'
+save_ext = '100m_subCL'
 
 ## running on staffumbrella
 # save_dir   = ''
@@ -53,7 +53,7 @@ save_dir = '/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/'
 
 expnr = ['001','002','003','004','005','006','007','008','009','010',\
                 '011','012','013','014','015','016','017']
-expnr = ['001','002','003','004','005','006','007','008','009']
+expnr = ['004',]
 
 srt_time   = np.datetime64('2020-02-02')
 end_time   = np.datetime64('2020-02-11')

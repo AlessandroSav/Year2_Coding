@@ -122,7 +122,9 @@ acc_time = 3600*1
 # col=['b','r','g','orange','k']
 col=['red','coral','maroon','blue','cornflowerblue','darkblue','green','lime','forestgreen','m']
 height_lim = [0,4000]        # in m
-heights_to_plot=[200,650,1500]
+heights_to_plot=[100,200,1500]
+heights_to_plot=['100','subCL','midCL']
+
 
 proj=ccrs.PlateCarree()
 coast = cartopy.feature.NaturalEarthFeature(\
@@ -377,12 +379,20 @@ era5['Date'] = era5.Date - np.timedelta64(4, 'h')
 era5.Date.attrs["units"] = "Local Time"
 
 #%% Import scale separated fluxes 
+print("Reading ScaleSep files.") 
 da_scales      = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/scale_sep_allExp.nc')
 da_scales_prof = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/scale_sep_prof_allExp.nc')
 
-# da_scales_100      = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/scale_sep_allExp_100m.nc')
-# da_scales   = xr.merge([da_scales,da_scales_100])
-# # da_scales   = da_scales.fillna(0)
+############################
+########################################################
+############################
+da_scales_100      = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/scale_sep_allExp_100m_CL.nc')
+da_scales_old = da_scales
+da_scales   = xr.merge([da_scales_old,da_scales_100])
+# da_scales   = da_scales.fillna(0)
+############################
+########################################################
+############################
 
 da_scales['time'] = da_scales.time  - np.timedelta64(4, 'h')
 da_scales.time.attrs["units"] = "Local Time"
@@ -400,7 +410,8 @@ for k in range(len(da_scales.klp)):
         f_scales[k] = xsize/(da_scales.klp[k]*2).values  # m
     elif da_scales.klp[k] == 0:
         f_scales[k] = xsize
-#%% Import organisatio metrics
+#%% Import organisation metrics
+print("Reading org metrics.") 
 da_org      = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/df_org_allExp.nc')
 da_org['time'] = da_org.time  - np.timedelta64(4, 'h')
 da_org.time.attrs["units"] = "Local Time"
@@ -409,73 +420,69 @@ da_org_norm = (da_org - da_org.min()) / (da_org.max() - da_org.min())
 #%% convert xt, yt into lon, lat coordinates  
 
 #%% Boundary layer height
+print("Defining Boundary Layer.") 
 # Above cloudheight with ql
-maxql = profiles['ql'].max('z')    # max of humiidity 
-imax = profiles['ql'].argmax('z')  # index of max humidity 
+#maxql = profiles['ql'].max('z')    # max of humiidity 
+#imax = profiles['ql'].argmax('z')  # index of max humidity 
 zmax = profiles['ql'].idxmax('z')  # height of max humidity
-
-
 temp = profiles['ql'].where(profiles['z']>=zmax)
+hc_ql = temp.where(lambda x: x<0.0000001).idxmax(dim='z')  #height of zero humidity after maximum
 
-hc_ql = temp.where(lambda x: x<0.0000005).idxmax(dim='z')  #height of zero humidity after maximum
+# Now calculate cloud base as the height where ql becomes >0 
+temp = profiles['ql'].where(profiles['z']<=zmax)
+cl_base = temp.where(lambda x: x<0.0000001).idxmax(dim='z')  
 
 # Minimum theta_v flux
-hc_thlvw = profiles['wthlt'].idxmin('z')  # height of min flux
-    
+# hc_thlvw = profiles['wthlt'].idxmin('z')  # height of min flux
+#  
 # # Combine 
 # if profiles['ql'].max('z') == 0:
 #     HC = hc_thlvw
 # else:
 #     HC = hc_ql
 
+######
 ## HONNERT normalization of the filter scale
 f_scales_norm_ql = f_scales[:,None] / (hc_ql).sel(time=da_scales.time).values[None,:]
 da_scales['f_scales_norm_ql'] = (('klp','time'),f_scales_norm_ql)
+# h   =  tmser.zi                 # boundary layer height 
+# hc  =  (tmser.zc_max-tmser.zb)  # cloud layer depth
+# hc  =  0
+# f_scales_norm = f_scales[:,None] / (h+hc).sel(time=da_scales.time).values[None,:]
+# da_scales['f_scales_norm'] = (('klp','time'),f_scales_norm)
+######
 
-h   =  tmser.zi                 # boundary layer height 
-hc  =  (tmser.zc_max-tmser.zb)  # cloud layer depth
-hc  =  0
-f_scales_norm = f_scales[:,None] / (h+hc).sel(time=da_scales.time).values[None,:]
-da_scales['f_scales_norm'] = (('klp','time'),f_scales_norm)
+##############################
+########## ADD UNRESOLVED FLUX,
+# define sub cloud layer and mid cloud layer 
+subCL = profiles.sel(z=(cl_base/2),method='nearest')
+subCL = subCL.assign_coords({"height": 'subCL'}).expand_dims(dim='height')
+midCL = profiles.sel(z=((hc_ql-cl_base)/2 + cl_base),method='nearest')
+midCL = midCL.assign_coords({"height": 'midCL'}).expand_dims(dim='height')
+surf_layer = profiles.sel(z=100,method='nearest')
+surf_layer = surf_layer.assign_coords({"height": '100'}).expand_dims(dim='height')
 
-     
-##########
+temp = xr.merge([subCL.drop(['z','zm']),midCL.drop(['z','zm']),surf_layer.drop(['z','zm'])])
 
-((da_scales['u_psfw_psf'].sel(klp=min(da_scales.klp).values)) -da_scales.uw_pf.isel(klp=1)).plot()
-da_scales.uw_pf.isel(klp=1).plot()
-profiles.sel(time=da_scales.time).sel(z=200,method='nearest')['vws'].plot()
+####### THIS NEXT PART DOES NOT WORK!!!!!!! !!! !!!!!!!
+#initialise new variabels
+da_scales['v_psfw_psf_unres'] = da_scales['v_psfw_psf']     + temp['vws']
+da_scales['u_psfw_psf_unres'] = da_scales['u_psfw_psf']     + temp['uws']
+da_scales['qt_psfw_psf_unres'] = da_scales['qt_psfw_psf']   + temp['wqts']
+da_scales['thl_psfw_psf_unres'] = da_scales['thl_psfw_psf'] + temp['wthls']
 
 
-### interpolate profiles to 200, 650, 1500, 2600 m
-temp = profiles.interp(z=da_scales.height.values)
-### change name of profiles z into height 
-temp = temp.rename({'z':'height'})
-### do the sum
-da_scales['v_psfw_psf_unres'] = da_scales['v_psfw_psf'] + temp.sel(time=da_scales.time.values)['vws']
-da_scales['u_psfw_psf_unres'] = da_scales['u_psfw_psf'] + temp.sel(time=da_scales.time.values)['uws']
-
-da_scales['qt_psfw_psf_unres'] = da_scales['qt_psfw_psf'] + temp.sel(time=da_scales.time.values)['wqls']
-da_scales['thl_psfw_psf_unres'] = da_scales['thl_psfw_psf'] + temp.sel(time=da_scales.time.values)['wthls']
-
- ### fix format of the new variable: hunktype=numpy.ndarray
-
-del temp
+########################################
+##############################
 
 #################
 ## normalize fluxes ## !!!!
-da_scales_norm = (da_scales)/(da_scales.sel(klp=min(da_scales.klp).values))
+## here you should normalise for klp=0.5, but not all height have that, so take 0.75
+da_scales_norm = (da_scales)/(da_scales.sel(klp=np.sort(da_scales.klp)[1]))
 #################
-#%%
-# plt.figure()
-# profiles['ql'].isel(time=20).plot(y='z')
-# plt.scatter(maxql.isel(time=20),zmax.isel(time=20),c='k')
-# plt.axhline(hc_ql.isel(time=20),c='k',lw=0.5)
-
-# plt.figure()
-# profiles['wthvt'].isel(time=20).plot(y='z')
-# plt.axhline(hc_thlvw.isel(time=20),c='k',lw=0.5)
 
 #%% SOME NEW VARIABLES
+print("Computing new variables.") 
 ### for DALES
 profiles = profiles.rename({'presh':'p'})
 profiles['du_dz']   = profiles.u.differentiate('z')
@@ -499,7 +506,6 @@ profiles['qt'].attrs["units"] = "g/kg"
 for var in ['u','v','thl','qt']:
     if var+'tendphyall' not in samptend:
         samptend[var+'tendphyall'] = samptend[var+'tendtotall'] - samptend[var+'tendlsall']
-
             
 ### for HARMONIE cy43
 if harm_3d:
@@ -613,7 +619,7 @@ axs[0].legend(fontsize=17)
     
 ## panel b
 for level in [200]: # meters
-    for idx,var in enumerate(['uwt','u']):
+    for idx,var in enumerate(['u','v']):
         axs[idx+1].plot(profiles.time,profiles[var].sel(z=level,method='nearest'),lw=3,c=col[3],label='DALES')
         if var in ds_obs['drop']:
             axs[idx+1].scatter((ds_obs['drop'].launch_time).values,\
@@ -809,7 +815,7 @@ for idcol, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
         
         
         if idcol == 0:
-            axs[idx,idcol].set_ylabel('Flux partition \n at '+str(da_scales.height[idx+1].values)+' m')
+            axs[idx,idcol].set_ylabel('Flux partition \n at '+str(ih)+' m')
         axs[idx,idcol].set_ylim([-0.15,1.15])
         axs[idx,1].yaxis.set_visible(False) 
     
@@ -834,7 +840,7 @@ fig, axs = plt.subplots(3,2,figsize=(12,12))
 for idcol, var in enumerate(['qt_psfw_psf_unres','thl_psfw_psf_unres']):
     # normalised y axis
     da_toplot = da_scales_norm
-    for idx,ih in enumerate(range(len(da_scales.height[0:3]))):   
+    for idx,ih in enumerate(heights_to_plot):   
         iteration =0
         for day in ['02','03','04','05','06','07','08','09']:
             iteration +=1
@@ -842,13 +848,13 @@ for idcol, var in enumerate(['qt_psfw_psf_unres','thl_psfw_psf_unres']):
                 axs[idx,idcol].plot(da_scales['f_scales_norm_ql'].\
                 resample(time='8h').mean('time').sel(time='2020-02-'+day),\
                   da_toplot.resample(time='8h').median('time')\
-                      [var].isel(height=ih).sel(time='2020-02-'+day).T\
+                      [var].sel(height=ih).sel(time='2020-02-'+day).T\
                     ,c=cmap(rgba*iteration),label=day)  
                 axs[idx,idcol].axvline(1,c='k',lw=0.5)
             else:
                 axs[idx,idcol].plot(f_scales/1000,\
                   da_toplot.resample(time='8h').median('time')\
-                      [var].isel(height=ih).sel(time='2020-02-'+day).T\
+                      [var].sel(height=ih).sel(time='2020-02-'+day).T\
                     ,c=cmap(rgba*iteration))   
                 axs[idx,idcol].axvline(2.5,c='k',lw=0.5)
         axs[idx,idcol].set_xscale('log')
@@ -857,7 +863,7 @@ for idcol, var in enumerate(['qt_psfw_psf_unres','thl_psfw_psf_unres']):
         
         
         if idcol == 0:
-            axs[idx,idcol].set_ylabel('Flux partition \n at '+str(da_scales.height[ih].values)+' m')
+            axs[idx,idcol].set_ylabel('Flux partition \n at '+str(ih)+' m')
         axs[idx,idcol].set_ylim([-0.15,1.15])
         axs[idx,1].yaxis.set_visible(False) 
     
@@ -885,7 +891,7 @@ plt.savefig(save_dir+'Figure5_momFlux_spectra_scalars.pdf', bbox_inches="tight")
 da_to_plot = da_scales_norm.where(abs(da_scales.f_scales_norm_ql-1)<=\
                                   abs(da_scales.f_scales_norm_ql-1).min('klp').max(),\
                                       drop=True)    
-ih = 650
+ih = 'midCL'
 fig, axs = plt.subplots(2,1,figsize=(12,7))
 for idx, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
     if 'lab' in locals(): del lab
@@ -899,7 +905,7 @@ for idx, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
             iteration +=0.3
             axs[idx].boxplot(da_to_plot[var].sel(time=slice('2020-02-'+day+'T'+hour,\
                                     '2020-02-'+day+'T'+str(int(hour)+7)+':55'))\
-                        .sel(height=ih,method='nearest').mean('klp').values,\
+                        .sel(height=ih).mean('klp').values,\
                             positions=[round(iteration,1)],\
                     whis=1.8,showfliers=False,showmeans=True,meanline=False,widths=0.25,\
                         medianprops=dict(color="r", lw=2))   
@@ -927,7 +933,7 @@ for n, ax in enumerate(axs.flat):
     ax.text(0.97, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
             size=13)
 plt.tight_layout()
-plt.savefig(save_dir+'Figure6_boxplot.pdf', bbox_inches="tight")  
+plt.savefig(save_dir+'Figure6_boxplot_'+str(ih)+'.pdf', bbox_inches="tight")  
 ##################
 #%%
 time_g1={}
@@ -1022,46 +1028,46 @@ plt.savefig(save_dir+'Figure7_tmser_groups.pdf', bbox_inches="tight")
 for var in ['u_psfw_psf_unres','v_psfw_psf_unres']:
     fig, axs = plt.subplots(3,2,figsize=(12,12))
     for idgroup, group in enumerate(['rain','iorg']):            
-        for idx,ih in enumerate(range(len(da_scales.height[0:3]))):  
+        for idx,ih in enumerate(heights_to_plot):  
             
             ## Non Dimensional x axis
-            axs[idx,idgroup].plot(da_scales['f_scales_norm_ql'].sel(time=time_g1[group]).mean('time'),da_scales_norm[var].isel(height=ih).sel(time=time_g1[group]).median('time'),\
+            axs[idx,idgroup].plot(da_scales['f_scales_norm_ql'].sel(time=time_g1[group]).mean('time'),da_scales_norm[var].sel(height=ih).sel(time=time_g1[group]).median('time'),\
                       lw=2.5,c='orange',label='Group 1')
-            axs[idx,idgroup].plot(da_scales['f_scales_norm_ql'].sel(time=time_g2[group]).mean('time'),da_scales_norm[var].isel(height=ih).sel(time=time_g2[group]).median('time'),\
+            axs[idx,idgroup].plot(da_scales['f_scales_norm_ql'].sel(time=time_g2[group]).mean('time'),da_scales_norm[var].sel(height=ih).sel(time=time_g2[group]).median('time'),\
                       lw=2.5,c='b',label='Group 2')
-            axs[idx,idgroup].plot(da_scales['f_scales_norm_ql'].sel(time=time_g3[group]).mean('time'),da_scales_norm[var].isel(height=ih).sel(time=time_g3[group]).median('time'),\
+            axs[idx,idgroup].plot(da_scales['f_scales_norm_ql'].sel(time=time_g3[group]).mean('time'),da_scales_norm[var].sel(height=ih).sel(time=time_g3[group]).median('time'),\
                       lw=2.5,c='green',label='Group 3')
             
             ## quartiles        
             axs[idx,idgroup].fill_between(da_scales['f_scales_norm_ql'].sel(time=time_g1[group]).mean('time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g1[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g1[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g1[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g1[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
                               color='orange',alpha=0.1)
             axs[idx,idgroup].fill_between(da_scales['f_scales_norm_ql'].sel(time=time_g2[group]).mean('time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g2[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g2[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g2[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g2[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
                               color='b',alpha=0.1)
             axs[idx,idgroup].fill_between(da_scales['f_scales_norm_ql'].sel(time=time_g3[group]).mean('time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g3[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g3[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g3[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g3[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
                               color='green',alpha=0.1)
                 
             ## Dimensional x axis
-            # axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].isel(height=ih).sel(time=time_g1).median('time'),\
+            # axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].sel(height=ih).sel(time=time_g1).median('time'),\
             #           lw=2.5,c='orange',label='Group 1')
-            # axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].isel(height=ih).sel(time=time_g2).median('time'),\
+            # axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].sel(height=ih).sel(time=time_g2).median('time'),\
             #           lw=2.5,c='b',label='Group 2')
-            # axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].isel(height=ih).sel(time=time_g3).median('time'),\
+            # axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].sel(height=ih).sel(time=time_g3).median('time'),\
             #           lw=2.5,c='green',label='Group 3')
                 
-        # plt.ylim([-0.02,+0.02])
+            axs[idx,idgroup].set_ylim([-0.1,+1.1])
             
             axs[idx,idgroup].set_xscale('log')
             axs[idx,idgroup].axhline(0,c='k',lw=0.5)
             axs[idx,idgroup].axvline(1,c='k',lw=0.5)
             
             if idgroup == 0:
-                axs[idx,idgroup].set_ylabel('Flux partition \n at '+str(da_scales.height[ih].values)+' m')
+                axs[idx,idgroup].set_ylabel('Flux partition \n at '+str(ih)+' m')
         axs[0,idgroup].legend(loc='lower right')
         axs[2,idgroup].set_xlabel(r'Dimensionless $\frac{\Delta x}{h_b}$ ')
     axs[0,0].set_title('Grouping by rain-rate',fontsize=24)  
@@ -1081,28 +1087,28 @@ for var in ['u_psfw_psf_unres','v_psfw_psf_unres']:
 for idgroup, group in enumerate(['iorg']):   
     fig, axs = plt.subplots(3,2,figsize=(12,12))
     for idvar, var in enumerate(['qt_psfw_psf_unres','thl_psfw_psf_unres']):         
-        for idx,ih in enumerate(range(len(da_scales_norm.height[0:3]))):  
+        for idx,ih in enumerate(heights_to_plot):  
             
             ## Non Dimensional x axis
-            axs[idx,idvar].plot(da_scales['f_scales_norm_ql'].sel(time=time_g1[group]).mean('time'),da_scales_norm[var].isel(height=ih).sel(time=time_g1[group]).median('time'),\
+            axs[idx,idvar].plot(da_scales['f_scales_norm_ql'].sel(time=time_g1[group]).mean('time'),da_scales_norm[var].sel(height=ih).sel(time=time_g1[group]).median('time'),\
                       lw=2.5,c='orange',label='Group 1')
-            axs[idx,idvar].plot(da_scales['f_scales_norm_ql'].sel(time=time_g2[group]).mean('time'),da_scales_norm[var].isel(height=ih).sel(time=time_g2[group]).median('time'),\
+            axs[idx,idvar].plot(da_scales['f_scales_norm_ql'].sel(time=time_g2[group]).mean('time'),da_scales_norm[var].sel(height=ih).sel(time=time_g2[group]).median('time'),\
                       lw=2.5,c='b',label='Group 2')
-            axs[idx,idvar].plot(da_scales['f_scales_norm_ql'].sel(time=time_g3[group]).mean('time'),da_scales_norm[var].isel(height=ih).sel(time=time_g3[group]).median('time'),\
+            axs[idx,idvar].plot(da_scales['f_scales_norm_ql'].sel(time=time_g3[group]).mean('time'),da_scales_norm[var].sel(height=ih).sel(time=time_g3[group]).median('time'),\
                       lw=2.5,c='green',label='Group 3')
             
             ## quartiles        
             axs[idx,idvar].fill_between(da_scales['f_scales_norm_ql'].sel(time=time_g1[group]).mean('time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g1[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g1[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g1[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g1[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
                               color='orange',alpha=0.1)
             axs[idx,idvar].fill_between(da_scales['f_scales_norm_ql'].sel(time=time_g2[group]).mean('time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g2[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g2[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g2[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g2[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
                               color='b',alpha=0.1)
             axs[idx,idvar].fill_between(da_scales['f_scales_norm_ql'].sel(time=time_g3[group]).mean('time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g3[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
-                          da_scales_norm[var].isel(height=ih).sel(time=time_g3[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g3[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
+                          da_scales_norm[var].sel(height=ih).sel(time=time_g3[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
                               color='green',alpha=0.1)
                 
             ## Dimensional x axis
@@ -1113,14 +1119,14 @@ for idgroup, group in enumerate(['iorg']):
             # axs[idx,idgroup].plot(f_scales/1000,da_scales_norm[var].isel(height=ih).sel(time=time_g3).median('time'),\
             #           lw=2.5,c='green',label='Group 3')
                 
-        # plt.ylim([-0.02,+0.02])
+            axs[idx,idgroup].set_ylim([-0.1,+1.1])
             
             axs[idx,idvar].set_xscale('log')
             axs[idx,idvar].axhline(0,c='k',lw=0.5)
             axs[idx,idvar].axvline(1,c='k',lw=0.5)
             
             if idgroup == 0:
-                axs[idx,idvar].set_ylabel('Flux partition \n at '+str(da_scales.height[ih].values)+' m')
+                axs[idx,idvar].set_ylabel('Flux partition \n at '+str(ih)+' m')
         axs[0,idvar].legend(loc='lower right')
         axs[0,idvar].set_title(var[0:-9]+' Flux',fontsize=24)  
         axs[2,idvar].set_xlabel(r'Dimensionless $\frac{\Delta x}{h_b}$ ')
@@ -1142,30 +1148,29 @@ for idgroup, group in enumerate(['iorg']):
         elif grp ==2:
             time_to_plot = time_g2[group]
         elif grp ==3:
-            time_to_plot = time_g3[group].sel(time='2020-02-02')
+            time_to_plot = time_g3[group]
 
-        for ih in [0,2]:  
-            if ih ==0:
+        for ih in ['100','midCL']:  
+            if ih =='100':
                 stl = '-'
-            elif ih==2:
+            else:
                 stl='--'
             
             for idvar, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']): 
                 ## Non Dimensional x axis
                 axs[idgrp,0].plot(da_scales['f_scales_norm_ql'].sel(time=time_to_plot)\
-                                    .mean('time'),da_scales_norm[var].isel(height=ih)\
+                                    .mean('time'),da_scales_norm[var].sel(height=ih)\
                                         .sel(time=time_to_plot).median('time'),\
-                          lw=2,ls=stl,c=col[idvar*3],label=var[0:-15])
+                          lw=2,ls=stl,c=col[idvar*3],label=var[0:-15]+' at '+ih)
                     
                     
             for idvar, var in enumerate(['qt_psfw_psf_unres','thl_psfw_psf_unres']): 
                 ## Non Dimensional x axis
                 axs[idgrp,1].plot(da_scales['f_scales_norm_ql'].sel(time=time_to_plot)\
-                                    .mean('time'),da_scales_norm[var].isel(height=ih)\
+                                    .mean('time'),da_scales_norm[var].sel(height=ih)\
                                         .sel(time=time_to_plot).median('time'),\
-                          lw=2,ls=stl,c=col[(2+idvar)*3],label=var[0:-15])
+                          lw=2,ls=stl,c=col[(2+idvar)*3],label=var[0:-15]+' at '+ih)
 
-            
             # ## quartiles        
             # axs[idx,idvar].fill_between(da_scales['f_scales_norm_ql'].sel(time=time_g1[group]).mean('time'),\
             #               da_scales_norm[var].isel(height=ih).sel(time=time_g1[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
@@ -1192,19 +1197,18 @@ for idgroup, group in enumerate(['iorg']):
             
 
         axs[idgrp,0].set_title('Group '+str(grp),fontsize=24)  
-        axs[2,idgrp].set_xlabel(r'Dimensionless $\frac{\Delta x}{h_b}$ ')
+        axs[idgrp,1].set_title('Group '+str(grp),fontsize=24)  
+        axs[2,0].set_xlabel(r'Dimensionless $\frac{\Delta x}{h_b}$ ')
+        axs[2,1].set_xlabel(r'Dimensionless $\frac{\Delta x}{h_b}$ ')
+
     axs[0,0].legend(loc='lower right',fontsize=18)
+    axs[0,1].legend(loc='lower right',fontsize=18)
     # plt.suptitle(r'Grouping by '+group,fontsize=24)  
     
     for n, ax in enumerate(axs.flat):
         ax.text(0.08, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
                 size=13)
     plt.tight_layout()
-    # plt.savefig(save_dir+'Figure8_appendix_allVar.pdf', bbox_inches="tight")  
-
-
-
-
 
 ##################
 #%% APPENDIX
@@ -1218,12 +1222,12 @@ for idgroup, group in enumerate(['iorg']):
         elif grp ==3:
             time_to_plot = time_g3
 
-        for idx,ih in enumerate(range(len(da_scales_norm.height[0:3]))):  
+        for idx,ih in enumerate(heights_to_plot):  
             
             for idvar, var in enumerate(['qt_psfw_psf_unres','thl_psfw_psf_unres','u_psfw_psf_unres','v_psfw_psf_unres']): 
                 ## Non Dimensional x axis
                 axs[idx,idgrp].plot(da_scales['f_scales_norm_ql'].sel(time=time_to_plot[group])\
-                                    .mean('time'),da_scales_norm[var].isel(height=ih)\
+                                    .mean('time'),da_scales_norm[var].sel(height=ih)\
                                         .sel(time=time_to_plot[group]).median('time'),\
                           lw=2,c=col[idvar*2],label=var[0:-15])
 
@@ -1250,7 +1254,7 @@ for idgroup, group in enumerate(['iorg']):
             axs[idx,idgrp].axvline(1,c='k',lw=0.5)
             
             if idgrp == 0:
-                axs[idx,idgrp].set_ylabel('Flux partition \n at '+str(da_scales.height[ih].values)+' m')
+                axs[idx,idgrp].set_ylabel('Flux partition \n at '+str(ih)+' m')
         axs[0,idgrp].set_title('Group '+str(grp),fontsize=24)  
         axs[2,idgrp].set_xlabel(r'Dimensionless $\frac{\Delta x}{h_b}$ ')
     axs[0,0].legend(loc='lower right',fontsize=18)
@@ -1833,7 +1837,7 @@ for idx,var in enumerate(['wqtt','wthlt']):
         
     tmser.zi.plot(x='time',ax=axs[idx,1],c='b',ls='-',label='Boundary layer')
     hc_ql.plot(x='time',ax=axs[idx,1],c='r',ls='-',label='Boundary layer ql')
-    hc_thlvw.plot(x='time',ax=axs[idx,1],c='r',ls='--',label='Boundary layer thlw')
+    # hc_thlvw.plot(x='time',ax=axs[idx,1],c='r',ls='--',label='Boundary layer thlw')
     
 
     axs[idx,0].yaxis.set_visible(True) 
