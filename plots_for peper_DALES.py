@@ -123,7 +123,7 @@ acc_time = 3600*1
 col=['red','coral','maroon','blue','cornflowerblue','darkblue','green','lime','forestgreen','m']
 height_lim = [0,4000]        # in m
 heights_to_plot=[100,200,1500]
-heights_to_plot=['100','subCL','midCL']
+heights_to_plot=['200','CLbase','midCL']
 
 
 proj=ccrs.PlateCarree()
@@ -386,10 +386,13 @@ da_scales_prof = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DAT
 ############################
 ########################################################
 ############################
-da_scales_100      = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/scale_sep_allExp_100m_CL.nc')
+da_scales_100      = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/scale_sep_allExp_100m_200m_CL.nc')
 da_scales_old = da_scales
 da_scales   = xr.merge([da_scales_old,da_scales_100])
 # da_scales   = da_scales.fillna(0)
+
+da_scales = da_scales_100
+
 ############################
 ########################################################
 ############################
@@ -450,6 +453,12 @@ da_scales['f_scales_norm_ql'] = (('klp','time'),f_scales_norm_ql)
 # hc  =  0
 # f_scales_norm = f_scales[:,None] / (h+hc).sel(time=da_scales.time).values[None,:]
 # da_scales['f_scales_norm'] = (('klp','time'),f_scales_norm)
+
+## Normalization with horizontal lenght 
+f_scales_norm_horiz = f_scales[:,None] / (da_org['spectral_length_moment']).\
+                                    sel(time=da_scales.time).values[None,:]
+da_scales['f_scales_norm_ho'] = (('klp','time'),f_scales_norm_horiz)
+
 ######
 
 ##############################
@@ -457,12 +466,17 @@ da_scales['f_scales_norm_ql'] = (('klp','time'),f_scales_norm_ql)
 # define sub cloud layer and mid cloud layer 
 subCL = profiles.sel(z=(cl_base/2),method='nearest')
 subCL = subCL.assign_coords({"height": 'subCL'}).expand_dims(dim='height')
+CLbase = profiles.sel(z=(cl_base),method='nearest')
+CLbase = CLbase.assign_coords({"height": 'CLbase'}).expand_dims(dim='height')
 midCL = profiles.sel(z=((hc_ql-cl_base)/2 + cl_base),method='nearest')
 midCL = midCL.assign_coords({"height": 'midCL'}).expand_dims(dim='height')
-surf_layer = profiles.sel(z=100,method='nearest')
-surf_layer = surf_layer.assign_coords({"height": '100'}).expand_dims(dim='height')
+layer_100 = profiles.sel(z=100,method='nearest')
+layer_100 = layer_100.assign_coords({"height": '100'}).expand_dims(dim='height')
+layer_200 = profiles.sel(z=200,method='nearest')
+layer_200 = layer_200.assign_coords({"height": '200'}).expand_dims(dim='height')
 
-temp = xr.merge([subCL.drop(['z','zm']),midCL.drop(['z','zm']),surf_layer.drop(['z','zm'])])
+temp = xr.merge([subCL.drop(['z','zm']),CLbase.drop(['z','zm']),midCL.drop(['z','zm']),\
+                 layer_100.drop(['z','zm']),layer_200.drop(['z','zm'])])
 
 ####### THIS NEXT PART DOES NOT WORK!!!!!!! !!! !!!!!!!
 #initialise new variabels
@@ -478,7 +492,8 @@ da_scales['thl_psfw_psf_unres'] = da_scales['thl_psfw_psf'] + temp['wthls']
 #################
 ## normalize fluxes ## !!!!
 ## here you should normalise for klp=0.5, but not all height have that, so take 0.75
-da_scales_norm = (da_scales)/(da_scales.sel(klp=np.sort(da_scales.klp)[1]))
+da_scales_norm = (da_scales)/(da_scales.sel(klp=np.sort(da_scales.klp)[0]))
+
 #################
 
 #%% SOME NEW VARIABLES
@@ -787,7 +802,16 @@ plt.savefig(save_dir+'Figure3_momFlux.pdf', bbox_inches="tight")
 
 ##################
 #%% ## FIGURE 5 ##
+# f_scales_norm_horiz = f_scales[:,None] / (1/(da_org['open_sky'])).\
+#                                     sel(time=da_scales.time).values[None,:]
+f_scales_norm_horiz = f_scales[:,None] / ((np.power(da_org['spectral_length_moment'],1))*100).\
+                                    sel(time=da_scales.time).values[None,:]
+# f_scales_norm_horiz = f_scales[:,None] / ((np.power(da_org['iorg'],3))*1000).\
+#                                     sel(time=da_scales.time).values[None,:]
+da_scales['f_scales_norm_ho'] = (('klp','time'),f_scales_norm_horiz)
+
 honnert = True
+dimensionelss = 'f_scales_norm_ho'
 fig, axs = plt.subplots(3,2,figsize=(12,12))
 for idcol, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
     # normalised y axis
@@ -797,7 +821,7 @@ for idcol, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
         for day in ['02','03','04','05','06','07','08','09']:
             iteration +=1
             if honnert==True:
-                axs[idx,idcol].plot(da_scales['f_scales_norm_ql'].\
+                axs[idx,idcol].plot(da_scales[dimensionelss].\
                 resample(time='8h').mean('time').sel(time='2020-02-'+day),\
                   da_toplot.resample(time='8h').median('time',skipna=True)\
                       [var].sel(height=ih).sel(time='2020-02-'+day).T\
@@ -821,7 +845,10 @@ for idcol, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
     
         # axs[0,1].legend()
     if honnert==True:
-        axs[2,idcol].set_xlabel(r'Dimensionless $\frac{\Delta x}{h_b}$ ')
+        if dimensionelss == 'f_scales_norm_ql':
+            axs[2,idcol].set_xlabel(r'Dimensionless $\frac{\Delta x}{h_b}$ ')
+        else:
+            axs[2,idcol].set_xlabel(r'Dimensionless $\frac{\Delta x}{h_{horiz}}$ ')
     else:
         axs[2,idcol].set_xlabel(r'Filter size $\Delta x$ ($km$)')
 
@@ -832,7 +859,7 @@ for n, ax in enumerate(axs.flat):
     ax.text(0.08, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
             size=13)
 plt.tight_layout()
-plt.savefig(save_dir+'Figure5_momFlux_spectra.pdf', bbox_inches="tight")  
+# plt.savefig(save_dir+'Figure5_momFlux_spectra.pdf', bbox_inches="tight")  
 ##################
 #%% ## FIGURE appendix ##
 honnert = True
@@ -880,7 +907,7 @@ for n, ax in enumerate(axs.flat):
     ax.text(0.08, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
             size=13)
 plt.tight_layout()
-plt.savefig(save_dir+'Figure5_momFlux_spectra_scalars.pdf', bbox_inches="tight")  
+# plt.savefig(save_dir+'Figure5_momFlux_spectra_scalars.pdf', bbox_inches="tight")  
 ##################
 
 #%% ## FIGURE 6 ## Boxplot
@@ -891,7 +918,7 @@ plt.savefig(save_dir+'Figure5_momFlux_spectra_scalars.pdf', bbox_inches="tight")
 da_to_plot = da_scales_norm.where(abs(da_scales.f_scales_norm_ql-1)<=\
                                   abs(da_scales.f_scales_norm_ql-1).min('klp').max(),\
                                       drop=True)    
-ih = 'midCL'
+ih = 'CLbase'
 fig, axs = plt.subplots(2,1,figsize=(12,7))
 for idx, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
     if 'lab' in locals(): del lab
@@ -988,21 +1015,26 @@ for idgroup, group in enumerate(['rain','iorg']):
         da_to_plot = profiles[group].sel(z=slice(0,50))\
                 .mean('z').rolling(time=6, center=True).mean()
     elif group in da_org_norm:
-        da_org[group].plot(c='k',ax=axs[idgroup])
+        if group == 'spectral_length_moment':
+            (100*(np.power(da_org[group],1))).plot(c='r',ax=axs[idgroup])
+            # hc_ql.plot(c='b',ax=axs[idgroup])
+        else:
+            da_org[group].plot(c='k',ax=axs[idgroup])
+            # np.power(da_org_norm['spectral_length_moment'],1).plot(c='r',ax=axs[idgroup])
         # tmser['cfrac'].plot(c='r',ax=axs[idgroup])
         da_to_plot = da_org[group]     
     elif group in tmser:
         tmser[group].plot(c='k',ax=axs[idgroup])
         da_to_plot = tmser[group]
         
-    
-    # moments.ctop_var.plot(c='r')
-    axs[idgroup].scatter(profiles.time.sel(time=time_g1[group]),\
-                         da_to_plot.sel(time=time_g1[group]),c='orange',label='Group 1')
-    axs[idgroup].scatter(profiles.time.sel(time=time_g2[group]),\
-                         da_to_plot.sel(time=time_g2[group]),c='b',label='Group 2')
-    axs[idgroup].scatter(profiles.time.sel(time=time_g3[group]),\
-                         da_to_plot.sel(time=time_g3[group]),c='green',label='Group 3')
+    if group in time_g1:
+        # moments.ctop_var.plot(c='r')
+        axs[idgroup].scatter(profiles.time.sel(time=time_g1[group]),\
+                             da_to_plot.sel(time=time_g1[group]),c='orange',label='Group 1')
+        axs[idgroup].scatter(profiles.time.sel(time=time_g2[group]),\
+                             da_to_plot.sel(time=time_g2[group]),c='b',label='Group 2')
+        axs[idgroup].scatter(profiles.time.sel(time=time_g3[group]),\
+                             da_to_plot.sel(time=time_g3[group]),c='green',label='Group 3')
 
 
     axs[idgroup].set_xlim([srt_plot,end_time])
@@ -1021,9 +1053,39 @@ for n, ax in enumerate(axs.flat):
     ax.text(0.97, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
             size=13)
 plt.tight_layout()
-plt.savefig(save_dir+'Figure7_tmser_groups.pdf', bbox_inches="tight")  
+# plt.savefig(save_dir+'Figure7_tmser_groups.pdf', bbox_inches="tight")  
 
 ##################
+#%% For Pier
+fil_size= 2.5
+var ='u_psfw_psf_unres'
+
+klp = 150/(2*fil_size)
+fig, axs = plt.subplots(3,3,figsize=(15,10))
+for idgroup, group in enumerate(['iorg','spectral_length_moment','hc_ql']): 
+    for idx,ih in enumerate(heights_to_plot): 
+        if group in da_org:
+            axs[idx,idgroup].scatter(da_org[group].sel(time=da_scales.time),\
+                                      (1-da_scales_norm[var]).sel(klp=klp,method='nearest').sel(height=ih),\
+                                          alpha = 0.5,s=12)
+            axs[idx,idgroup].plot([da_org[group].sel(time=da_scales.time).min(),\
+                                   da_org[group].sel(time=da_scales.time).max()],\
+                                  [-0.1, 1.1],c='grey',lw=1)
+        else:
+            axs[idx,idgroup].scatter(hc_ql.sel(time=da_scales.time),\
+                                     (1-da_scales_norm[var]).sel(klp=klp,method='nearest').sel(height=ih),\
+                                         alpha = 0.5,s=12)
+            axs[idx,idgroup].plot([hc_ql.sel(time=da_scales.time).min(),\
+                                   hc_ql.sel(time=da_scales.time).max()],\
+                                  [-0.1, 1.1],c='grey',lw=1)
+                    
+        axs[idx,0].set_ylabel(str(1)+' - '+var)
+        axs[idx,idgroup].set_ylim([-0.1,1.1])
+        
+        # axs[idx,idgroup].set_xscale('log')
+    axs[2,idgroup].set_xlabel(group)
+
+
 #%% ## FIGURE 8 ## spectral plot by groups 
 for var in ['u_psfw_psf_unres','v_psfw_psf_unres']:
     fig, axs = plt.subplots(3,2,figsize=(12,12))
@@ -1081,7 +1143,7 @@ for var in ['u_psfw_psf_unres','v_psfw_psf_unres']:
         ax.text(0.08, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
                 size=13)
     plt.tight_layout()
-    plt.savefig(save_dir+'Figure8_'+var[0]+'_spectra_groups.pdf', bbox_inches="tight")  
+    # plt.savefig(save_dir+'Figure8_'+var[0]+'_spectra_groups.pdf', bbox_inches="tight")  
 ##################
 #%% ## FIGURE appendix ## spectral plot by groups 
 for idgroup, group in enumerate(['iorg']):   
@@ -1329,13 +1391,13 @@ axs[1,0].set_ylabel(r'z ($m$)')
 axs[0,0].legend(fontsize=16)
 # plt.xlabel(r''+var+' momentum flux [$m^2 / s^2$]')
 # plt.ylabel('Z [m]')
-plt.title('Partitioning of momentum flux \n Filter scale = 2.5 km')
+# plt.title('Partitioning of momentum flux \n Filter scale = 2.5 km')
     
 for n, ax in enumerate(axs.flat):
     ax.text(0.05, 0.95, string.ascii_uppercase[n], transform=ax.transAxes, 
                 size=20)
 plt.tight_layout()
-# plt.savefig(save_dir+'Figure9_flux_profiles_groups.pdf', bbox_inches="tight")  
+plt.savefig(save_dir+'Figure9_flux_profiles_groups.pdf', bbox_inches="tight")  
 ##################
 #%% ## FIGURE 10 ## Resolved tendency term  
 ## budget 

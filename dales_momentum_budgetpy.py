@@ -142,7 +142,7 @@ harmonie_time_to_keep = '202002010000-'
 col=['red','coral','maroon','blue','cornflowerblue','darkblue','green','lime','forestgreen','m']
 height_lim = [0,4000]        # in m
 
-proj=ccrs.PlateCarree()
+proj=ccrs.PlateCarree()§
 coast = cartopy.feature.NaturalEarthFeature(\
         category='physical', scale='50m', name='coastline',
         facecolor='none', edgecolor='r')
