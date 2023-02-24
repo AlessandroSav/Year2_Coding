@@ -16,6 +16,7 @@ Analysis of DALES outputs
 import pandas as pd
 import numpy as np
 import xarray as xr
+from scipy import ndimage as ndi
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.colors import DivergingNorm
@@ -24,12 +25,8 @@ import os
 from glob import glob
 from datetime import datetime, timedelta
 import sys
-from sklearn.cluster import KMeans
 import matplotlib.pylab as pylab
 from pylab import *
-import cartopy
-import cartopy.crs as ccrs
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 params = {'legend.fontsize': 'large',
          'axes.labelsize': 20,
          'axes.titlesize':'large',
@@ -42,11 +39,6 @@ pylab.rcParams.update(params)
 my_source_dir = os.path.abspath('{}/../../../My_source_codes')
 sys.path.append(my_source_dir)
 from My_thermo_fun import *
-
-def logic(index,first_line=4):
-    if ((index-3)%levels+3 == 0) or ((index-2)%levels+3 == 0) or (index<first_line):
-       return True
-    return False
 
 def adjust_lightness(color, amount=0.7):
     import matplotlib.colors as mc
@@ -78,16 +70,76 @@ height_lim = [0,3800]        # in m
 ###############################################################################
 crossxz = xr.open_mfdataset(data_dir+'Exp_'+expnr+'/crossxz*.nc',combine='by_coords',decode_times=False)
 crossyz = xr.open_mfdataset(data_dir+'Exp_'+expnr+'/crossyz*.nc',combine='by_coords',decode_times=False)
-
-
+## convert time from seconds to date
 crossxz['time'] = srt_time + crossxz.time.astype("timedelta64[s]")
 crossyz['time'] = srt_time + crossyz.time.astype("timedelta64[s]")
-#%% 
-var = 'u'
+## interpolate coordinates to single grid (not zm and zt)
+crossxz['xm'] = crossxz['xt']
+crossyz['ym'] = crossyz['yt']
+
+#%%
+## find outline of clouds for 'snap_time' 
+
+for section in ['xz','yz']:
+    if section =='xz':
+        mask = np.nan_to_num((crossxz['ql'].where(crossxz['ql']>0.0001)\
+                          .sel(time=snap_time)).values)
+    if section =='yz':
+        mask = np.nan_to_num((crossyz['ql'].where(crossyz['ql']>0.0001)\
+                          .sel(time=snap_time)).values)
+    mask[mask > 0] = 3
+    kernel = np.ones((4,4))
+    C      = ndi.convolve(mask, kernel, mode='constant', cval=0)
+    outer  = np.where( (C>=3) & (C<=12 ), 1, 0)
+    # add variable cloud contour
+    # works only for 1 time stamp 
+    if section =='xz':
+        crossxz['cloud'] = (('zt', 'xm'), outer)
+    if section =='yz':
+        crossyz['cloud'] = (('zt', 'ym'), outer)
+
+
+#%% ##############     PLOTTING       ##############
+####################################################
+
+## cross-yz
+var='u'
 plt.figure()
-crossxz[var].sel(time=snap_time).plot(x='xm')
+crossxz[var].sel(time=snap_time).plot(x='xm',vmin=-8)
+crossxz['cloud'].where(crossxz['cloud'] > 0).plot(cmap='binary',\
+                                                  add_colorbar=False,vmin=0,vmax=0.5)
+plt.axhline(200,c='k',lw=1)
 plt.ylim(height_lim)
-plt.title(snap_time)
+plt.title(snap_time,fontsize=20)
+
+# var='w'
+# plt.figure()
+# crossxz[var].sel(time=snap_time).plot(x='xt',vmin=-1)
+# # crossxz['cloud'].where(crossxz['cloud'] > 0).plot(cmap='binary',\
+# #                                                   add_colorbar=False,vmin=0,vmax=0.5)
+# plt.axhline(200,c='k',lw=1)
+# plt.ylim(height_lim)
+# plt.title(snap_time,fontsize=20)
+
+
+## cross-yz
+var='v'
+plt.figure()
+crossyz[var].sel(time=snap_time).plot(x='ym',vmin=-8)
+crossyz['cloud'].where(crossyz['cloud'] > 0).plot(cmap='binary',\
+                                                  add_colorbar=False,vmin=0,vmax=0.5)
+plt.axhline(200,c='k',lw=1)
+plt.ylim(height_lim)
+plt.title(snap_time,fontsize=20)
+
+# var='w'
+# plt.figure()
+# crossyz[var].sel(time=snap_time).plot(x='yt',vmin=-1)
+# # crossyz['cloud'].where(crossyz['cloud'] > 0).plot(cmap='binary',\
+# #                                                   add_colorbar=False,vmin=0,vmax=0.5)
+# plt.axhline(200,c='k',lw=1)
+# plt.ylim(height_lim)
+# plt.title(snap_time,fontsize=20)
 
 
 
