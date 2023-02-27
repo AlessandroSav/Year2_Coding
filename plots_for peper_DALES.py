@@ -657,8 +657,9 @@ axs[2].axhline(0,c='k',lw=0.5)
         
 axs[1].set_title('Zonal wind at '+str(level)+' m',size=35)
 axs[2].set_title('Meridional wind at '+str(level)+' m',size=35)
-axs[1].set_ylim([-17.5,-1.5])
-axs[2].set_ylim([-7.8,4.5])
+# axs[1].set_ylim([-17.5,-1.5])
+axs[1].set_ylim([-1.5,-17.5])
+axs[2].set_ylim([4.5,-7.8])
 axs[1].legend(fontsize=22)
 
 axs[2].tick_params(axis='x', which='major', labelsize=30, rotation =25)
@@ -751,12 +752,13 @@ plt.savefig(save_dir+'Figure2_profiles.pdf', bbox_inches="tight")
 ##################
 #%% ## FIGURE 3 ## mom flux contours
 bottom, top = 0.1, 0.9
-left, right = 0.1, 0.8
+left, right = 0.01, 0.9
 
-fig, axs = plt.subplots(2,2,figsize=(22,12), gridspec_kw={'width_ratios': [1,6]})
+fig, axs = plt.subplots(2,2,figsize=(29,15), gridspec_kw={'width_ratios': [1,6]})
 fig.subplots_adjust(top=top, bottom=bottom, left=left, right=right, \
-                    hspace=0.15, wspace=0.25)
-
+                    hspace=0.15, wspace=0.1)
+    
+    
 for idx,var in enumerate(['uwt','vwt']):
     iteration = 0
     profiles[var].mean('time').plot(y='z',c='k',lw=4, label='Mean',ax=axs[idx,0])
@@ -774,25 +776,44 @@ for idx,var in enumerate(['uwt','vwt']):
     # tmser.zi.plot(x='time',ax=axs[idx,1],c='b',ls='-',label='Boundary layer')
     hc_ql.plot(x='time',ax=axs[idx,1],c='k',ls='-',label='Cloud top')
     # hc_thlvw.plot(x='time',ax=axs[idx,1],c='k',ls='-',label='Boundary layer thlw')
+    
 
     axs[idx,0].yaxis.set_visible(True) 
-    axs[idx,0].set_ylabel(r'z ($m$)',fontsize=30)
-    axs[idx,0].set_xlabel(r'$m^2 s^{-2}$',fontsize=30)
+    axs[idx,0].set_ylabel(r'z ($m$)',fontsize=33)
+    axs[idx,0].set_xlabel(r'$m^2 s^{-2}$',fontsize=33)
     axs[idx,0].axvline(0,c='k',lw=0.5)
     axs[idx,1].yaxis.set_visible(False) 
     axs[idx,0].set_ylim(height_lim)
     axs[idx,1].set_ylim(height_lim)
     axs[idx,1].set_xlim([srt_plot,end_time])
-    axs[idx,0].tick_params(axis='both', which='major', labelsize=28)
-    axs[idx,1].tick_params(axis='both', which='major', labelsize=28)
+    axs[idx,0].tick_params(axis='both', which='major', labelsize=31)
+    axs[idx,1].tick_params(axis='both', which='major', labelsize=31)
     for day in np.arange(srt_plot,end_plot):
         axs[idx,1].axvline(x=day,c='k',lw=0.5)
+
+ax2 = axs[0,1].twinx()
+(profiles['u']).sel(z=200,method='nearest')\
+    .plot(x='time',ax=ax2,c='b',ls='-',label='u ($m s^{-1}$)')
+ax2.set_ylim([-5,-28])
+ax2.tick_params(axis='y', colors='b')
+ax2.set_title('')
+ax2.set_ylabel('u ($m s^{-1}$)',c='b',fontsize=28)
+# ax2.legend(fontsize=26)
+
+ax3 = axs[1,1].twinx()
+(profiles['v']).sel(z=200,method='nearest')\
+    .plot(x='time',ax=ax3,c='b',ls='-',label='v ($m s^{-1})$')
+ax3.set_ylim([3,-20])
+ax3.tick_params(axis='y', colors='b')
+ax3.set_title('')
+ax3.set_ylabel('v ($m s^{-1}$)',c='b',fontsize=28)
+# ax3.legend(fontsize=26)
 
 axs[0,1].set_title('Zonal momentum flux',fontsize=40)   
 axs[1,1].set_title('Meridional momentum flux',fontsize=40)   
 axs[0,1].xaxis.set_visible(False) 
-axs[0,0].legend(fontsize=16)
-axs[0,1].legend(fontsize=26,loc='upper left')
+axs[0,0].legend(fontsize=21)
+axs[0,1].legend(fontsize=30,loc='upper left')
 axs[1,0].set_xlim([-0.04,0.04])
 axs[1,0].set_xticks([-0.03,0.03])
 axs[1,1].set_xticks(np.arange(srt_plot,end_plot)[1:])
@@ -800,7 +821,10 @@ axs[1,1].set_xticks(np.arange(srt_plot,end_plot)[1:])
 axs[1,1].set_xlabel(None)
 for n, ax in enumerate(axs.flat):
     ax.text(0.9, 1.05, string.ascii_uppercase[n], transform=ax.transAxes, 
-            size=25)
+            size=30)
+    
+    
+
 # cbar_ax = fig.add_axes([0.9, 0.15, 0.01, 0.7])  # Left, bottom, width, height.
 # cbar = fig.colorbar(im, cax=cbar_ax, extend='both', orientation='vertical')
 # cbar.set_label(r'$m^2 s^{-1}$')
@@ -1591,12 +1615,21 @@ for idgroup, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['ior
         axs[idvar,idx].set_ylim([0,4000])
         if var == 'u':
             axs[idvar,idx].set_xlim([-14,-2])
+            axs[idvar,idx].plot([-13.9] * len(profiles['z']),profiles['z'].where((profiles[var+'wt'].sel(time=sel_time).mean('time')\
+                             * profiles['d'+var+'_dz'].sel(time=sel_time)\
+                                 .mean('time'))>0).values,c='r',lw=5)
         if var == 'v':
             axs[idvar,idx].set_xlim([-3,1])    
+            axs[idvar,idx].plot([-2.99] * len(profiles['z']),profiles['z'].where((profiles[var+'wt'].sel(time=sel_time).mean('time')\
+                             * profiles['d'+var+'_dz'].sel(time=sel_time)\
+                                 .mean('time'))>0).values,c='r',lw=5)
         
         axs[idvar,idx].set_title("Wind $\overline{"+var+"}$",fontsize =25)
         axs[idvar,idx].set_xlabel(r'ms$^{-1}$')
         axs[idvar,idx].set_ylabel(r'z (m)')
+        
+        
+        
         
         ## flux 
         idx = 1
@@ -1674,14 +1707,29 @@ for idgroup, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['ior
         axs[idvar,idx].set_xlim([-0.22,0.48])
         axs[idvar,idx].set_title(r"Flux divergence -$\frac{\partial}{\partial{z}} \overline{"+var+"'w'}$",fontsize =25)
         axs[idvar,idx].set_xlabel(r'ms$^{-2}$')
-
-
+        
     for n, ax in enumerate(axs.flat):
         ax.text(0.91, 0.95, string.ascii_uppercase[n], transform=ax.transAxes, 
                     size=20)
     plt.tight_layout()
 
     plt.savefig(save_dir+'Figure12_profiles_all'+str(idgroup+1)+'.pdf', bbox_inches="tight")  
+
+
+#%%
+for idgroup, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['iorg']]):
+    for idvar, var in enumerate(['u','v']):
+        plt.figure()
+        (profiles[var+'wt'].sel(time=sel_time).mean('time') * profiles['d'+var+'_dz'].sel(time=sel_time).mean('time')).plot(y='z')
+        # (profiles[var+'wt'] * profiles['d'+var+'_dz']).sel(time=sel_time).mean('time').plot(y='z')
+        plt.axvline(0,c='k')
+        plt.ylim(height_lim)
+        plt.title('Group '+str(idgroup+1)+' '+var,fontsize=20)
+        plt.xlim([-0.00015,None])
+
+        profiles.where((profiles[var+'wt'].sel(time=sel_time).mean('time') * profiles['d'+var+'_dz'].sel(time=sel_time).mean('time'))>0)
+        
+
 #%% ## FIGURE 9 ## Flux profils by group 
 ## Profiles
 fig, axs = plt.subplots(2,3,figsize=(12,13))
@@ -1876,7 +1924,7 @@ plt.savefig(save_dir+'Figure11_mom_budget.pdf', bbox_inches="tight")
 # 
 #%% ## FIGURE 11 bis ##
 ### tmser of momentum budget 
-fig, axs = plt.subplots(2,1,figsize=(19,15))
+fig, axs = plt.subplots(2,1,figsize=(20,16))
 layer = [0,750]
 rol = 8
 dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).mean('z')\
@@ -1911,22 +1959,26 @@ for idx, var in enumerate(['u','v']):
     # (acc_time*(h_clim_to_plot['dt'+var+'_dyn']+h_clim_to_plot['dt'+var+'_phy'])\
     #  .rolling(time=rol).mean()).plot(c='r',ls=':',label='HAR: Tot',ax=axs[idx])
     # (acc_time*h_clim_to_plot['dt'+var+'_dyn'].rolling(time=rol).mean()).plot(c='k',ls=':',label='HAR: Dyn',ax=axs[idx])
-    (acc_time*(dales_to_plot[var+'tendlsall']+h_clim_to_plot['dt'+var+'_phy'])\
-     .rolling(time=rol).mean()).plot(c='deeppink',ls=':',label='H. Tot',ax=axs[idx])
-    (acc_time*dales_to_plot[var+'tendlsall'].rolling(time=rol*4).mean()).plot(c='k',ls=':',label='H. Dyn',ax=axs[idx])
-    (acc_time*h_clim_to_plot['dt'+var+'_phy'].rolling(time=rol).mean()).plot(c='g',ls=':',label='H. Phy',ax=axs[idx])
+    # (acc_time*(dales_to_plot[var+'tendlsall']+h_clim_to_plot['dt'+var+'_phy'])\
+    #  .rolling(time=rol).mean()).plot(c='deeppink',ls=':',label='H. Tot',ax=axs[idx])
+    # (acc_time*dales_to_plot[var+'tendlsall'].rolling(time=rol*4).mean()).plot(c='k',ls=':',label='H. Dyn',ax=axs[idx])
+    # (acc_time*h_clim_to_plot['dt'+var+'_phy'].rolling(time=rol).mean()).plot(c='g',ls=':',label='H. Phy',ax=axs[idx])
 
     axs[idx].axhline(0,c='k',lw=0.5)
     axs[idx].set_ylabel(r'Tendency ($m s^{-1} hour^{-1}$)')
     axs[idx].set_ylim([-0.9,0.82])
-    axs[idx].set_title('Mean '+var+' tendency between '+str(layer[0])+' and '+str(layer[1])+' m',fontsize=26)
+    for idgroup, sel_time in enumerate([time_g1['iorg'],time_g3['iorg']]):
+        axs[idx].scatter(sel_time,[-0.89] * len(sel_time),\
+                             c=['orange','green'][idgroup])
+    
+    axs[idx].set_title('Mean '+var+' tendency between '+str(layer[0])+' and '+str(layer[1])+' m',fontsize=30)
     axs[idx].set_xlim([srt_plot,end_time])
 
     #####
     for day in np.arange(srt_plot,end_plot):
         axs[idx].axvline(x=day,c='k',lw=0.5)
         
-axs[0].legend(ncol=2,fontsize=17)
+axs[0].legend(ncol=2,fontsize=20)
 axs[0].set_xlabel(None)
 axs[0].xaxis.set_visible(False) 
 axs[1].set_xlabel(None)
@@ -1934,8 +1986,76 @@ axs[1].set_xlabel(None)
 plt.tight_layout()
 for n, ax in enumerate(axs):
     ax.text(0.95, 0.95, string.ascii_uppercase[n], transform=ax.transAxes, 
-            size=18)
-plt.savefig(save_dir+'Figure_mom_budget_tmser.pdf', bbox_inches="tight")
+            size=20)
+# plt.savefig(save_dir+'Figure_mom_budget_tmser.pdf', bbox_inches="tight")
+##################
+#%% ## FIGURE 11 tris ## vertically integrated tendency 
+### tmser of momentum budget 
+fig, axs = plt.subplots(2,1,figsize=(20,16))
+layer = [0,1500]
+rol = 8
+dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).sum('z')\
+    # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
+h_clim_to_plot = harm_clim_avg.sel(z=slice(layer[0],layer[1])).sum('z')\
+    # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
+    
+scale_tend = (da_scales_prof.diff('height')/np.diff(da_scales_prof['height']))\
+    .sel(height=slice(layer[0],layer[1])).sum('height')\
+        # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))    
+
+for idx, var in enumerate(['u','v']):
+    ## DALES 
+    (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendtotall']).\
+        plot(c='deeppink',lw=2,label='Total',ax=axs[idx])
+    (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendlsall']).\
+        plot(c='k',lw=2,label='Large scale',ax=axs[idx])
+    (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendphyall']).\
+        plot(c='g',lw=2,label='Total - Large scale',ax=axs[idx])
+        
+    ((-acc_time*scale_tend[var+'_psfw_psf'])\
+        +(acc_time*dales_to_plot[var+'tenddifall'])).rolling(time=rol*2).mean()\
+        .plot(c='mediumpurple',marker='o',markevery=15,markerfacecolor='none',label=r'Sub-filter ($\Delta x=2.5 km$)',ax=axs[idx])
+    # (-acc_time*scale_tend[var+'_pfw_pf']).rolling(time=rol*2).mean()\
+    #     .plot(c='orange',ls='-',label='DALES: Up-filter',ax=axs[idx])
+        
+    # (-acc_time*(scale_tend[var+'_psfw_psf']+scale_tend[var+'_pfw_pf'])\
+    #     +(acc_time*dales_to_plot[var+'tenddifall'])).rolling(time=rol*2).mean()\
+    #     .plot(c='m',ls='-',label='DALES: SUM',ax=axs[idx])
+    
+    ## HARMONIE cy43 clim
+    # (acc_time*(h_clim_to_plot['dt'+var+'_dyn']+h_clim_to_plot['dt'+var+'_phy'])\
+    #  .rolling(time=rol).mean()).plot(c='r',ls=':',label='HAR: Tot',ax=axs[idx])
+    # (acc_time*h_clim_to_plot['dt'+var+'_dyn'].rolling(time=rol).mean()).plot(c='k',ls=':',label='HAR: Dyn',ax=axs[idx])
+    # (acc_time*(dales_to_plot[var+'tendlsall']+h_clim_to_plot['dt'+var+'_phy'])\
+    #  .rolling(time=rol).mean()).plot(c='deeppink',ls=':',label='H. Tot',ax=axs[idx])
+    # (acc_time*dales_to_plot[var+'tendlsall'].rolling(time=rol*4).mean()).plot(c='k',ls=':',label='H. Dyn',ax=axs[idx])
+    # (acc_time*h_clim_to_plot['dt'+var+'_phy'].rolling(time=rol).mean()).plot(c='g',ls=':',label='H. Phy',ax=axs[idx])
+
+    axs[idx].axhline(0,c='k',lw=0.5)
+    axs[idx].set_ylabel(r'Tendency ($m s^{-1} hour^{-1}$)')
+    axs[idx].set_ylim([-40,31])
+    for idgroup, sel_time in enumerate([time_g1['iorg'],time_g3['iorg']]):
+        axs[idx].scatter(sel_time,[-39.5] * len(sel_time),\
+                             c=['orange','green'][idgroup])
+    
+    axs[idx].set_title('Integrated '+var+' tendency between '+str(layer[0])+' and '+str(layer[1])+' m',fontsize=30)
+    axs[idx].set_xlim([srt_plot,end_time])
+
+    #####
+    for day in np.arange(srt_plot,end_plot):
+        axs[idx].axvline(x=day,c='k',lw=0.5)
+        
+axs[0].legend(ncol=2,fontsize=20)
+axs[0].set_xlabel(None)
+axs[0].xaxis.set_visible(False) 
+axs[1].set_xlabel(None)
+
+plt.tight_layout()
+for n, ax in enumerate(axs):
+    ax.text(0.95, 0.95, string.ascii_uppercase[n], transform=ax.transAxes, 
+            size=20)
+plt.tight_layout()
+plt.savefig(save_dir+'Figure_integrated_mom_budget_tmser.pdf', bbox_inches="tight")
 ##################
 #%% Diurnal cycle 
 ## COMPOSITE
@@ -2073,14 +2193,14 @@ for idy,var in enumerate(['u','v']):
             # axs[idy].scatter(x[var+'tendlsall'].sel(time=ii.dt.strftime('%Y-%m-%d').values),\
             #                  x[var+'tendtotall'].sel(time=ii.dt.strftime('%Y-%m-%d').values),\
             #                      c=col[idx-1],alpha=0.4,s=5)
-        for idx,ii in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['iorg']]):
+        for idx,ii in enumerate([time_g1['iorg'],time_g3['iorg']]):
             axs[idy].scatter(x[var+'tendlsall'].sel(time=ii).mean('time'),\
                               x[var+'tendtotall'].sel(time=ii).mean('time'),\
-                                  c=col_groups[idx],alpha=1,s=50,marker='s',label='Group '+str(idx+1))
+                                  c=col_groups[idx+idx],alpha=0.9,s=55,marker='s',label='Group '+str(idx+1+idx))
         for hour in range(0,24):
             axs[idy].text(x[var+'tendlsall'].where(samptend.time.dt.hour==hour,drop=True).mean(),\
                       (x[var+'tendtotall']).where(samptend.time.dt.hour==hour,drop=True).mean(),\
-                        hour,c=matplotlib.cm.get_cmap('tab20b')(1/23*hour),fontsize=13,weight='bold')
+                        hour,c=matplotlib.cm.get_cmap('tab20b')(1/23*hour),fontsize=15,weight='light')
     ################## 
     
     axs[idy].plot([-1.1, 0.8], [-1.1, 0.8],c='grey',lw=1)
@@ -2098,11 +2218,19 @@ for idy,var in enumerate(['u','v']):
         axs[idy].set_ylim([-1.1, 0.75])
         axs[idy].set_xlim([-0.6, 0.4])
         axs[idy].set_ylim([-0.6, 0.4])
-    axs[idy].set_ylabel('Tot tendency (m/s /hour)')
+    
     # plt.ylabel('Divergence duwt_dz ()')
-    axs[idy].set_xlabel('LS tendency (m/s /hour)')
-    axs[idy].set_title(model+': '+var+' in layer '+str(layer),size=20)
+    axs[idy].set_xlabel(r'Large scale tendency ($m s^{-1} h^{-1}$)')
+    
+axs[0].set_title('Zonal momentum budget',size=25)
+axs[1].set_title('Meridional momentum budget',size=25)
+axs[0].set_ylabel(r'Total tendency ($m s^{-1} h^{-1}$)')
 axs[1].legend(ncol=2)
+plt.suptitle('Mean between '+str(layer[0])+' and '+str(layer[1])+' m',fontsize=22)
+
+plt.tight_layout()
+# plt.savefig(save_dir+'Figure13_hysteresis.pdf', bbox_inches="tight")  
+
 ################################
 ################################
 

@@ -64,7 +64,7 @@ srt_time   = np.datetime64('2020-02-02T20')
 
 # col=['b','r','g','orange','k']
 col=['red','coral','maroon','blue','cornflowerblue','darkblue','green','lime','forestgreen','m']
-height_lim = [0,3800]        # in m
+height_lim = [0,3800*0.001]        # in km
 
 #%%                             Import
 ###############################################################################
@@ -73,9 +73,24 @@ crossyz = xr.open_mfdataset(data_dir+'Exp_'+expnr+'/crossyz*.nc',combine='by_coo
 ## convert time from seconds to date
 crossxz['time'] = srt_time + crossxz.time.astype("timedelta64[s]")
 crossyz['time'] = srt_time + crossyz.time.astype("timedelta64[s]")
+
+## from m to km 
+crossxz['xt']=crossxz['xt']*0.001
+crossxz['yt']=crossxz['yt']*0.001
+crossxz['zt']=crossxz['zt']*0.001
+crossxz['zm']=crossxz['zm']*0.001
+crossyz['yt']=crossyz['yt']*0.001
+crossyz['xt']=crossyz['xt']*0.001
+crossyz['zt']=crossyz['zt']*0.001
+crossyz['zm']=crossyz['zm']*0.001
+
 ## interpolate coordinates to single grid (not zm and zt)
 crossxz['xm'] = crossxz['xt']
 crossyz['ym'] = crossyz['yt']
+crossxz = crossxz.assign_coords({"xm": ("xm", crossxz.xm.values)})
+crossyz = crossyz.assign_coords({"ym": ("ym", crossyz.ym.values)})
+
+
 
 #%%
 ## find outline of clouds for 'snap_time' 
@@ -99,6 +114,8 @@ for section in ['xz','yz']:
         crossyz['cloud'] = (('zt', 'ym'), outer)
 
 
+crossxz['uw'] = crossxz['u']*crossxz['w']
+
 #%% ##############     PLOTTING       ##############
 ####################################################
 
@@ -108,18 +125,32 @@ plt.figure()
 crossxz[var].sel(time=snap_time).plot(x='xm',vmin=-8)
 crossxz['cloud'].where(crossxz['cloud'] > 0).plot(cmap='binary',\
                                                   add_colorbar=False,vmin=0,vmax=0.5)
-plt.axhline(200,c='k',lw=1)
+plt.axvline(crossyz.xt.values,c='k',ls='--',lw=1)
+plt.axhline(0.2,c='k',ls='--',lw=1)
 plt.ylim(height_lim)
 plt.title(snap_time,fontsize=20)
 
-# var='w'
+
+# var='v'
 # plt.figure()
-# crossxz[var].sel(time=snap_time).plot(x='xt',vmin=-1)
-# # crossxz['cloud'].where(crossxz['cloud'] > 0).plot(cmap='binary',\
-# #                                                   add_colorbar=False,vmin=0,vmax=0.5)
-# plt.axhline(200,c='k',lw=1)
+# crossxz[var].sel(time=snap_time).plot(x='xt',vmin=-8)
+# crossxz['cloud'].where(crossxz['cloud'] > 0).plot(cmap='binary',\
+#                                                   add_colorbar=False,vmin=0,vmax=0.5)
+# plt.axvline(crossyz.xt.values,c='k',ls='--',lw=1)
+# plt.axhline(0.2,c='k',ls='--',lw=1)
 # plt.ylim(height_lim)
 # plt.title(snap_time,fontsize=20)
+
+
+var='w'
+plt.figure()
+crossxz[var].sel(time=snap_time).plot(x='xt',vmin=-1)
+crossxz['cloud'].where(crossxz['cloud'] > 0).plot(cmap='binary',\
+                                                  add_colorbar=False,vmin=0,vmax=0.5)
+plt.axvline(crossyz.xt.values,c='k',ls='--',lw=1)
+plt.axhline(0.2,c='k',ls='--',lw=1)
+plt.ylim(height_lim)
+plt.title(snap_time,fontsize=20)
 
 
 ## cross-yz
@@ -128,18 +159,20 @@ plt.figure()
 crossyz[var].sel(time=snap_time).plot(x='ym',vmin=-8)
 crossyz['cloud'].where(crossyz['cloud'] > 0).plot(cmap='binary',\
                                                   add_colorbar=False,vmin=0,vmax=0.5)
-plt.axhline(200,c='k',lw=1)
+plt.axvline(crossxz.yt.values,c='k',ls='--',lw=1)
+plt.axhline(0.2,c='k',ls='--',lw=1)
 plt.ylim(height_lim)
 plt.title(snap_time,fontsize=20)
 
-# var='w'
-# plt.figure()
-# crossyz[var].sel(time=snap_time).plot(x='yt',vmin=-1)
-# # crossyz['cloud'].where(crossyz['cloud'] > 0).plot(cmap='binary',\
-# #                                                   add_colorbar=False,vmin=0,vmax=0.5)
-# plt.axhline(200,c='k',lw=1)
-# plt.ylim(height_lim)
-# plt.title(snap_time,fontsize=20)
+var='w'
+plt.figure()
+crossyz[var].sel(time=snap_time).plot(x='yt',vmin=-1)
+crossyz['cloud'].where(crossyz['cloud'] > 0).plot(cmap='binary',\
+                                                  add_colorbar=False,vmin=0,vmax=0.5)
+plt.axvline(crossxz.yt.values,c='k',ls='--',lw=1)
+plt.axhline(0.2,c='k',ls='--',lw=1)
+plt.ylim(height_lim)
+plt.title(snap_time,fontsize=20)
 
 
 
