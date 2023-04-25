@@ -92,6 +92,7 @@ col=['red','coral','maroon','blue','cornflowerblue','darkblue','green','lime','f
 height_lim = [0,4000]        # in m
 
 z_plot = 200 #m
+f_size = 2500 # m
 
 proj=ccrs.PlateCarree()
 coast = cartopy.feature.NaturalEarthFeature(\
@@ -114,9 +115,9 @@ for path,subdir,files in os.walk(dales_exp_dir):
     if path[-3:] in expnr: 
         for file in glob(os.path.join(path, 'profiles*.nc')):
             prof_files.append(file)
-        for file in glob(os.path.join(path, 'cross_field'+str(z_plot)+'m*.nc')):
+        for file in glob(os.path.join(path, 'cross_field'+str(z_plot)+'*'+str(f_size)+'m*.nc')):
             cross_files.append(file)
-        for file in glob(os.path.join(path, 'cross_field_scalar'+str(z_plot)+'m*.nc')):
+        for file in glob(os.path.join(path, 'cross_field_scalar'+str(z_plot)+'*'+str(f_size)+'m*.nc')):
             cross_scalar_files.append(file)
 cross_files.sort()
 da_cross = xr.open_mfdataset(cross_files, combine='by_coords')

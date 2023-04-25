@@ -32,7 +32,7 @@ itmax = 24
 di    = 8       # delta time for plots 
 zmin = 0
 zmax = 5000
-store = True
+store = False
 klps = [187.5,75,30,10]
 
 load_data = False

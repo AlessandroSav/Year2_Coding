@@ -108,7 +108,7 @@ temp_hrs   = [np.datetime64('2020-02-02'),np.datetime64('2020-02-11')]
     
 make_videos       = False
 LES_forc_HARMONIE = True
-harm_3d           = True
+harm_3d           = False
 comp_observations = True
 comp_experiments  = False
 
@@ -382,6 +382,8 @@ era5.Date.attrs["units"] = "Local Time"
 print("Reading ScaleSep files.") 
 da_scales      = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/scale_sep_allExp.nc')
 da_scales_prof = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/scale_sep_prof_allExp.nc')
+
+da_scales_prof_scalar = xr.open_dataset('/Users/acmsavazzi/Documents/WORK/PhD_Year2/DATA/DALES/scale_sep_prof_allExp_scalar.nc')
 
 ############################
 ########################################################
@@ -708,7 +710,7 @@ plt.tight_layout()
 for n, ax in enumerate(axs):
     ax.text(0.95, 1.05, string.ascii_uppercase[n], transform=ax.transAxes, 
             size=20)
-plt.savefig(save_dir+'Figure1_tmser.pdf', bbox_inches="tight")
+# plt.savefig(save_dir+'Figure1_tmser.pdf', bbox_inches="tight")
 ##################
 #%% ## FIGURE 2 ##
 cmap = matplotlib.cm.get_cmap('coolwarm')
@@ -848,6 +850,7 @@ f_scales_norm_horiz = f_scales[:,None] / ((np.power(da_org['spectral_length_mome
 #                                     sel(time=da_scales.time).values[None,:]
 da_scales['f_scales_norm_ho'] = (('klp','time'),f_scales_norm_horiz)
 
+fil_size = 2  # km
 
 ih = 'midCL'
 
@@ -880,7 +883,7 @@ for idx, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
                   da_toplot.resample(time='8h').median('time')\
                       [var].sel(height=ih).sel(time='2020-02-'+day).T\
                     ,c=cmap(rgba*iteration))   
-                axs[idx,idcol].axvline(2.5,c='k',lw=0.5)
+                axs[idx,idcol].axvline(fil_size,c='k',lw=0.5)
         axs[idx,idcol].set_xscale('log')
         
         axs[idx,idcol].axhline(0,c='k',lw=0.5)
@@ -907,7 +910,7 @@ for n, ax in enumerate(axs.flat):
     ax.text(0.08, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
             size=20)
 plt.tight_layout()
-plt.savefig(save_dir+'Figure5_norm&not_'+ih+'.pdf', bbox_inches="tight")  
+# plt.savefig(save_dir+'Figure5_norm&not_'+ih+'.pdf', bbox_inches="tight")  
 
 
 
@@ -920,8 +923,8 @@ f_scales_norm_horiz = f_scales[:,None] / ((np.power(da_org['spectral_length_mome
 #                                     sel(time=da_scales.time).values[None,:]
 da_scales['f_scales_norm_ho'] = (('klp','time'),f_scales_norm_horiz)
 
-honnert = True
-dimensionelss = 'f_scales_norm_ho'
+honnert = False
+dimensionelss = 'f_scales_norm_ql'
 fig, axs = plt.subplots(3,2,figsize=(12,12))
 for idcol, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
     # normalised y axis
@@ -1030,7 +1033,7 @@ if honnert:
                                       abs(da_scales.f_scales_norm_ql-1).min('klp').max(),\
                                           drop=True) 
 else:
-    filter_size = 2.5  # km
+    filter_size = 2  # km
     da_to_plot = da_scales_norm.sel(klp=150/(filter_size*2),method='nearest')
     
 ih = 'midCL'
@@ -1184,7 +1187,7 @@ for n, ax in enumerate(axs.flat):
     ax.text(0.05, 0.9, string.ascii_uppercase[n], transform=ax.transAxes, 
             size=18)
 plt.tight_layout()
-plt.savefig(save_dir+'Figure7_tmser_groups_Iorg.pdf', bbox_inches="tight") 
+# plt.savefig(save_dir+'Figure7_tmser_groups_Iorg.pdf', bbox_inches="tight") 
 
 
 
@@ -1269,6 +1272,8 @@ for idgroup, group in enumerate(['iorg','spectral_length_moment','hc_ql']):
 
 #%% ## FIGURE 8 NEW ## spectral plot by groups 
 group = 'iorg'
+klp      = 38
+fil_size = round(150/(2*klp),1) 
 
 fig, axs = plt.subplots(3,2,figsize=(12,12))
 for idvar, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):            
@@ -1302,11 +1307,11 @@ for idvar, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
         ##############
         ## median
         axs[idx,idvar].plot(f_scales/1000,da_scales_norm[var].sel(height=ih).sel(time=time_g1[group]).median('time'),\
-                  lw=2.5,c='orange',label='Group 1')
+                  lw=2.5,c='orange',label='Unorganised')
         axs[idx,idvar].plot(f_scales/1000,da_scales_norm[var].sel(height=ih).sel(time=time_g2[group]).median('time'),\
                   lw=2.5,c='b',label='Group 2')
         axs[idx,idvar].plot(f_scales/1000,da_scales_norm[var].sel(height=ih).sel(time=time_g3[group]).median('time'),\
-                  lw=2.5,c='green',label='Group 3')
+                  lw=2.5,c='green',label='Organised')
         ## quartiles        
         axs[idx,idvar].fill_between(f_scales/1000,\
                       da_scales_norm[var].sel(height=ih).sel(time=time_g1[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
@@ -1320,7 +1325,7 @@ for idvar, var in enumerate(['u_psfw_psf_unres','v_psfw_psf_unres']):
                       da_scales_norm[var].sel(height=ih).sel(time=time_g3[group]).chunk(dict(time=-1)).quantile(0.25,dim='time'),\
                       da_scales_norm[var].sel(height=ih).sel(time=time_g3[group]).chunk(dict(time=-1)).quantile(0.75,dim='time'),\
                           color='green',alpha=0.1)
-        axs[idx,idvar].axvline(2.5,c='k',lw=0.5)
+        axs[idx,idvar].axvline(fil_size,c='k',lw=0.5)
             
         axs[idx,idvar].set_ylim([-0.1,+1.1])
         axs[idx,idvar].set_xscale('log')
@@ -1597,6 +1602,8 @@ for idgroup, group in enumerate(['iorg']):
 
 #%% ## FIGURE 12 NEW ## PROFILES_all groups
 z_cut = 0
+klp      = 38
+fil_size = round(150/(2*klp),1) 
 for idgroup, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['iorg']]):
     fig, axs = plt.subplots(2,3,figsize=(12,13))
     for idvar, var in enumerate(['u','v']):
@@ -1634,15 +1641,15 @@ for idgroup, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['ior
         ## flux 
         idx = 1
         # mean
-        da_scales_prof[var+"w_pf"].sel(time=sel_time).where(da_scales_prof['height']>z_cut)\
+        da_scales_prof[var+"w_pf"].sel(klp=klp,time=sel_time).where(da_scales_prof['height']>z_cut)\
                 .mean('time').\
             plot(y='height',lw=3,ls='-',c='g',\
                  label='Total \n resolved',ax=axs[idvar,idx],zorder=2)
-        da_scales_prof[var+"_pfw_pf"].sel(time=sel_time)\
+        da_scales_prof[var+"_pfw_pf"].sel(klp=klp,time=sel_time)\
                 .mean('time').\
             plot(y='height',lw=2,ls='-',c='brown',marker='+',markevery=8,\
                  label='Up-filter',ax=axs[idvar,idx])
-        da_scales_prof[var+"_psfw_psf"].sel(time=sel_time).where(da_scales_prof['height']>z_cut)\
+        da_scales_prof[var+"_psfw_psf"].sel(klp=klp,time=sel_time).where(da_scales_prof['height']>z_cut)\
                 .mean('time').\
             plot(y='height',lw=2,ls='-',c='mediumpurple',marker='o',markevery=8,markerfacecolor='none',\
                  label='Sub-filter',ax=axs[idvar,idx])
@@ -1672,19 +1679,19 @@ for idgroup, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['ior
         axs[idvar,idx].plot(-acc_time*((da_scales_prof[var+"w_pf"].diff('height')/np.diff(da_scales_prof['height'].values))\
                                        .where(da_scales_prof['height']>z_cut)\
                                                # - tend_to_plot[var+'tenddif'+samp]\
-                                                   ).sel(time=sel_time).mean('time').values[0,:],\
+                                                   .sel(klp=klp,time=sel_time).mean('time')).values,\
                                     (da_scales_prof['height'].values[1:] + da_scales_prof['height'].values[:-1])/2,\
                                         ls='-',c='g',lw=3,label='Total \n resolved')
         axs[idvar,idx].plot(-acc_time*(da_scales_prof[var+"_pfw_pf"].diff('height')/np.diff(da_scales_prof['height'].values))\
                             #.where(da_scales_prof['height']>z_cut)\
-                            .sel(time=sel_time).mean('time').values[0,:],\
+                            .sel(klp=klp,time=sel_time).mean('time').values,\
                             (da_scales_prof['height'].values[1:] + da_scales_prof['height'].values[:-1])/2,\
                                 ls='-',c='brown',lw=2,marker='+',markevery=8,\
                                     label='Up-filter')
         axs[idvar,idx].plot(-acc_time*(da_scales_prof[var+"_psfw_psf"].diff('height')/np.diff(da_scales_prof['height'].values))\
                                        .where(da_scales_prof['height']>z_cut)\
                                        # - tend_to_plot[var+'tenddif'+samp]\
-                                           .sel(time=sel_time).mean('time').values[0,:],\
+                                           .sel(klp=klp,time=sel_time).mean('time').values,\
                             (da_scales_prof['height'].values[1:] + da_scales_prof['height'].values[:-1])/2,\
                                 ls='-',c='mediumpurple',lw=2,marker='o',markevery=8,markerfacecolor='none',\
                                     label='Sub-filter')
@@ -1713,37 +1720,38 @@ for idgroup, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['ior
                     size=20)
     plt.tight_layout()
 
-    plt.savefig(save_dir+'Figure12_profiles_all'+str(idgroup+1)+'.pdf', bbox_inches="tight")  
+    plt.savefig(save_dir+'Figure12_profiles_all'+str(idgroup+1)+'_f'+str(fil_size)+'.pdf', bbox_inches="tight")  
 
 
 #%%
-for idgroup, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['iorg']]):
-    for idvar, var in enumerate(['u','v']):
-        plt.figure()
-        (profiles[var+'wt'].sel(time=sel_time).mean('time') * profiles['d'+var+'_dz'].sel(time=sel_time).mean('time')).plot(y='z')
-        # (profiles[var+'wt'] * profiles['d'+var+'_dz']).sel(time=sel_time).mean('time').plot(y='z')
-        plt.axvline(0,c='k')
-        plt.ylim(height_lim)
-        plt.title('Group '+str(idgroup+1)+' '+var,fontsize=20)
-        plt.xlim([-0.00015,None])
+# for idgroup, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['iorg']]):
+#     for idvar, var in enumerate(['u','v']):
+#         plt.figure()
+#         (profiles[var+'wt'].sel(time=sel_time).mean('time') * profiles['d'+var+'_dz'].sel(time=sel_time).mean('time')).plot(y='z')
+#         # (profiles[var+'wt'] * profiles['d'+var+'_dz']).sel(time=sel_time).mean('time').plot(y='z')
+#         plt.axvline(0,c='k')
+#         plt.ylim(height_lim)
+#         plt.title('Group '+str(idgroup+1)+' '+var,fontsize=20)
+#         plt.xlim([-0.00015,None])
 
-        profiles.where((profiles[var+'wt'].sel(time=sel_time).mean('time') * profiles['d'+var+'_dz'].sel(time=sel_time).mean('time'))>0)
+#         profiles.where((profiles[var+'wt'].sel(time=sel_time).mean('time') * profiles['d'+var+'_dz'].sel(time=sel_time).mean('time'))>0)
         
 
 #%% ## FIGURE 9 ## Flux profils by group 
+klp=38
 ## Profiles
 fig, axs = plt.subplots(2,3,figsize=(12,13))
 for idvar, var in enumerate(['u','v']):
     for idx, sel_time in enumerate([time_g1['iorg'],time_g2['iorg'],time_g3['iorg']]):
 
         ## mean
-        da_scales_prof[var+"w_pf"].sel(time=sel_time).mean('time').\
+        da_scales_prof[var+"w_pf"].sel(klp=klp,time=sel_time).mean('time').\
             plot(y='height',lw=3,ls='-',c='g',\
                  label='Total \n resolved',ax=axs[idvar,idx],zorder=2)
-        da_scales_prof[var+"_pfw_pf"].sel(time=sel_time).mean('time').\
+        da_scales_prof[var+"_pfw_pf"].sel(klp=klp,time=sel_time).mean('time').\
             plot(y='height',lw=2,ls='-',c='brown',marker='+',markevery=8,\
                  label='Up-filter',ax=axs[idvar,idx])
-        da_scales_prof[var+"_psfw_psf"].sel(time=sel_time).mean('time').\
+        da_scales_prof[var+"_psfw_psf"].sel(klp=klp,time=sel_time).mean('time').\
             plot(y='height',lw=2,ls='-',c='mediumpurple',marker='o',markevery=8,markerfacecolor='none',\
                  label='Sub-filter',ax=axs[idvar,idx])
             
@@ -1759,19 +1767,19 @@ for idvar, var in enumerate(['u','v']):
 
         ## quartiles        
         axs[idvar,idx].fill_betweenx(da_scales_prof.height,\
-                          da_scales_prof[var+"w_pf"].sel(time=sel_time).quantile(0.25,dim='time').sel(klp=30),\
-                          da_scales_prof[var+"w_pf"].sel(time=sel_time).quantile(0.75,dim='time').sel(klp=30),\
+                          da_scales_prof[var+"w_pf"].sel(klp=klp,time=sel_time).quantile(0.25,dim='time'),\
+                          da_scales_prof[var+"w_pf"].sel(klp=klp,time=sel_time).quantile(0.75,dim='time'),\
                               color='g',alpha=0.1)
             
-        axs[idvar,idx].fill_betweenx(da_scales_prof.height,\
-                          da_scales_prof[var+"_pfw_pf"].sel(time=sel_time).quantile(0.25,dim='time').sel(klp=30),\
-                          da_scales_prof[var+"_pfw_pf"].sel(time=sel_time).quantile(0.75,dim='time').sel(klp=30),\
-                              color='brown',alpha=0.1)
+        # axs[idvar,idx].fill_betweenx(da_scales_prof.height,\
+        #                   da_scales_prof[var+"_pfw_pf"].sel(klp=klp,time=sel_time).quantile(0.25,dim='time'),\
+        #                   da_scales_prof[var+"_pfw_pf"].sel(klp=klp,time=sel_time).quantile(0.75,dim='time'),\
+        #                       color='brown',alpha=0.1)
             
-        axs[idvar,idx].fill_betweenx(da_scales_prof.height,\
-                          da_scales_prof[var+"_psfw_psf"].sel(time=sel_time).quantile(0.25,dim='time').sel(klp=30),\
-                          da_scales_prof[var+"_psfw_psf"].sel(time=sel_time).quantile(0.75,dim='time').sel(klp=30),\
-                              color='mediumpurple',alpha=0.1)
+        # axs[idvar,idx].fill_betweenx(da_scales_prof.height,\
+        #                   da_scales_prof[var+"_psfw_psf"].sel(klp=klp,time=sel_time).quantile(0.25,dim='time'),\
+        #                   da_scales_prof[var+"_psfw_psf"].sel(klp=klp,time=sel_time).quantile(0.75,dim='time'),\
+        #                       color='mediumpurple',alpha=0.1)
 
         axs[idvar,idx].axvline(0,c='k',lw=0.5)
         axs[0,idx].set_xlim([-0.015,0.09])
@@ -1887,12 +1895,12 @@ for idvar, var in enumerate(['u','v']):
 
         c=1
         ## HARMONIE cy43 
-        axs[idvar,idx].plot(unit*acc_time*h_clim_to_plot['dt'+var+'_dyn'].\
-                    sel(time=sel_time).mean('time'),h_clim_to_plot['z'],c='k',ls='--',lw=2,label='H. dyn')         
-        axs[idvar,idx].plot(unit*acc_time*(h_clim_to_plot['dt'+var+'_phy']+h_clim_to_plot['dt'+var+'_dyn']).\
-                    sel(time=sel_time).mean('time'),h_clim_to_plot['z'],c='deeppink',ls='--',lw=2,label='H. Tot')
-        axs[idvar,idx].plot(unit*acc_time*h_clim_to_plot['dt'+var+'_phy'].\
-                    sel(time=sel_time).mean('time'),h_clim_to_plot['z'],c='g',ls='--',lw=2,label='H. phy')
+        # axs[idvar,idx].plot(unit*acc_time*h_clim_to_plot['dt'+var+'_dyn'].\
+        #             sel(time=sel_time).mean('time'),h_clim_to_plot['z'],c='k',ls='--',lw=2,label='H. dyn')         
+        # axs[idvar,idx].plot(unit*acc_time*(h_clim_to_plot['dt'+var+'_phy']+h_clim_to_plot['dt'+var+'_dyn']).\
+        #             sel(time=sel_time).mean('time'),h_clim_to_plot['z'],c='deeppink',ls='--',lw=2,label='H. Tot')
+        # axs[idvar,idx].plot(unit*acc_time*h_clim_to_plot['dt'+var+'_phy'].\
+        #             sel(time=sel_time).mean('time'),h_clim_to_plot['z'],c='g',ls='--',lw=2,label='H. phy')
 
         if var == 'u' or var == 'v':
             axs[idvar,idx].plot(unit*acc_time*h_clim_to_plot['dt'+var+'_turb'].\
@@ -1925,29 +1933,40 @@ plt.savefig(save_dir+'Figure11_mom_budget.pdf', bbox_inches="tight")
 #%% ## FIGURE 11 bis ##
 ### tmser of momentum budget 
 fig, axs = plt.subplots(2,1,figsize=(20,16))
-layer = [0,750]
+layer =   'CLtop' # [0,1500]
 rol = 8
-dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).mean('z')\
-    # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
-h_clim_to_plot = harm_clim_avg.sel(z=slice(layer[0],layer[1])).mean('z')\
+
+if layer =='CLtop':
+    dales_to_plot   = samptend.where(samptend.z<hc_ql).mean('z')
+    scale_tend      =(da_scales_prof.diff('height')/np.diff(da_scales_prof['height']))\
+        .where(da_scales_prof.height<hc_ql).mean('height')
+else:
+    dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).mean('z')\
+        # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
+        
+    scale_tend = (da_scales_prof.diff('height')/np.diff(da_scales_prof['height']))\
+        .sel(height=slice(layer[0],layer[1])).mean('height')\
+        # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))  
+        
+# h_clim_to_plot = harm_clim_avg.sel(z=slice(layer[0],layer[1])).mean('z')\
     # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
     
-scale_tend = (da_scales_prof.diff('height')/np.diff(da_scales_prof['height']))\
-    .sel(height=slice(layer[0],layer[1])).mean('height')\
-        # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))    
+  
 
 for idx, var in enumerate(['u','v']):
     ## DALES 
     (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendtotall']).\
-        plot(c='deeppink',lw=2,label='D. Tot',ax=axs[idx])
+        plot(c='deeppink',lw=2.5,label='D. Tot',ax=axs[idx])
     (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendlsall']).\
-        plot(c='k',lw=2,label='D. LS',ax=axs[idx])
+        plot(c='k',lw=2.5,label='D. LS',ax=axs[idx])
     (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendphyall']).\
-        plot(c='g',lw=2,label='D. Tot - LS',ax=axs[idx])
+        plot(c='g',lw=2.5,label='D. Tot - LS',ax=axs[idx])
         
     ((-acc_time*scale_tend[var+'_psfw_psf'])\
         +(acc_time*dales_to_plot[var+'tenddifall'])).rolling(time=rol*2).mean()\
-        .plot(c='mediumpurple',marker='o',markevery=15,markerfacecolor='none',label=r'D. Sub-filter ($\Delta x=2.5 km$)',ax=axs[idx])
+        .plot(c='mediumpurple',marker='o',lw=2.5,\
+              markevery=15,markerfacecolor='none',\
+                  label=r'D. Sub-filter ($\Delta x=2.5 km$)',ax=axs[idx])
     # (-acc_time*scale_tend[var+'_pfw_pf']).rolling(time=rol*2).mean()\
     #     .plot(c='orange',ls='-',label='DALES: Up-filter',ax=axs[idx])
         
@@ -1964,19 +1983,28 @@ for idx, var in enumerate(['u','v']):
     # (acc_time*dales_to_plot[var+'tendlsall'].rolling(time=rol*4).mean()).plot(c='k',ls=':',label='H. Dyn',ax=axs[idx])
     # (acc_time*h_clim_to_plot['dt'+var+'_phy'].rolling(time=rol).mean()).plot(c='g',ls=':',label='H. Phy',ax=axs[idx])
 
-    axs[idx].axhline(0,c='k',lw=0.5)
+    axs[idx].axhline(0,c='k',lw=1)
     axs[idx].set_ylabel(r'Tendency ($m s^{-1} hour^{-1}$)')
-    axs[idx].set_ylim([-0.9,0.82])
+    # axs[idx].set_ylim([-0.9,0.82])
+    axs[idx].set_ylim([-0.6,0.41])
     for idgroup, sel_time in enumerate([time_g1['iorg'],time_g3['iorg']]):
-        axs[idx].scatter(sel_time,[-0.89] * len(sel_time),\
-                             c=['orange','green'][idgroup])
+        # axs[idx].scatter(sel_time,[-0.89] * len(sel_time),\
+        #                      c=['orange','green'][idgroup])
+            
+        for ii in sel_time:
+            axs[idx].fill_betweenx([-1,1],ii-np.timedelta64(15,'m'),\
+                            ii+np.timedelta64(14,'m'),\
+                                color=['orange','green'][idgroup],alpha=0.1)
     
-    axs[idx].set_title('Mean '+var+' tendency between '+str(layer[0])+' and '+str(layer[1])+' m',fontsize=30)
+    if layer == 'CLtop':
+        axs[idx].set_title('Mean '+var+' tendency below cloud top',fontsize=30)
+    else:        
+        axs[idx].set_title('Mean '+var+' tendency between '+str(layer[0])+' and '+str(layer[1])+' m',fontsize=30)
     axs[idx].set_xlim([srt_plot,end_time])
 
     #####
     for day in np.arange(srt_plot,end_plot):
-        axs[idx].axvline(x=day,c='k',lw=0.5)
+        axs[idx].axvline(x=day,c='k',lw=1)
         
 axs[0].legend(ncol=2,fontsize=20)
 axs[0].set_xlabel(None)
@@ -1992,29 +2020,37 @@ for n, ax in enumerate(axs):
 #%% ## FIGURE 11 tris ## vertically integrated tendency 
 ### tmser of momentum budget 
 fig, axs = plt.subplots(2,1,figsize=(20,16))
-layer = [0,1500]
+# layer = [0,750]
+layer =   'CLtop' # [0,1500]
 rol = 8
-dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).sum('z')\
-    # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
-h_clim_to_plot = harm_clim_avg.sel(z=slice(layer[0],layer[1])).sum('z')\
-    # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
-    
-scale_tend = (da_scales_prof.diff('height')/np.diff(da_scales_prof['height']))\
-    .sel(height=slice(layer[0],layer[1])).sum('height')\
-        # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))    
+klp      = 38
+fil_size = round(150/(2*klp),1) 
+
+if layer =='CLtop':
+    dales_to_plot   = samptend.where(samptend.z<hc_ql).sum('z')
+    scale_tend      =(da_scales_prof.diff('height')/np.diff(da_scales_prof['height']))\
+        .sel(klp=klp).where(da_scales_prof.height<hc_ql).sum('height')
+else:
+    dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).sum('z')\
+        # .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
+        
+    scale_tend = (da_scales_prof.diff('height')/np.diff(da_scales_prof['height']))\
+        .sel(klp=klp).sel(height=slice(layer[0],layer[1])).sum('height')
 
 for idx, var in enumerate(['u','v']):
     ## DALES 
     (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendtotall']).\
-        plot(c='deeppink',lw=2,label='Total',ax=axs[idx])
+        plot(c='deeppink',lw=2.5,label='Total',ax=axs[idx])
     (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendlsall']).\
-        plot(c='k',lw=2,label='Large scale',ax=axs[idx])
+        plot(c='k',lw=2.5,label='Large scale',ax=axs[idx])
     (acc_time*dales_to_plot.rolling(time=rol*4).mean()[var+'tendphyall']).\
-        plot(c='g',lw=2,label='Total - Large scale',ax=axs[idx])
+        plot(c='g',lw=2.5,label='Total - Large scale',ax=axs[idx])
         
     ((-acc_time*scale_tend[var+'_psfw_psf'])\
         +(acc_time*dales_to_plot[var+'tenddifall'])).rolling(time=rol*2).mean()\
-        .plot(c='mediumpurple',marker='o',markevery=15,markerfacecolor='none',label=r'Sub-filter ($\Delta x=2.5 km$)',ax=axs[idx])
+        .plot(c='mediumpurple',marker='o',lw=2.5,\
+              markevery=15,markerfacecolor='none',\
+                  label=r'Sub-filter ($\Delta x='+str(fil_size)+' km$)',ax=axs[idx])
     # (-acc_time*scale_tend[var+'_pfw_pf']).rolling(time=rol*2).mean()\
     #     .plot(c='orange',ls='-',label='DALES: Up-filter',ax=axs[idx])
         
@@ -2031,59 +2067,176 @@ for idx, var in enumerate(['u','v']):
     # (acc_time*dales_to_plot[var+'tendlsall'].rolling(time=rol*4).mean()).plot(c='k',ls=':',label='H. Dyn',ax=axs[idx])
     # (acc_time*h_clim_to_plot['dt'+var+'_phy'].rolling(time=rol).mean()).plot(c='g',ls=':',label='H. Phy',ax=axs[idx])
 
-    axs[idx].axhline(0,c='k',lw=0.5)
-    axs[idx].set_ylabel(r'Tendency ($m s^{-1} hour^{-1}$)')
+    axs[idx].axhline(0,c='k',lw=1)
+    axs[idx].set_ylabel(r'Tendency ($m s^{-1} hour^{-1}$)',fontsize=30)
     axs[idx].set_ylim([-40,31])
     for idgroup, sel_time in enumerate([time_g1['iorg'],time_g3['iorg']]):
-        axs[idx].scatter(sel_time,[-39.5] * len(sel_time),\
-                             c=['orange','green'][idgroup])
+        # axs[idx].scatter(sel_time,[-39.5] * len(sel_time),\
+        #                      c=['orange','green'][idgroup])
+        for ii in sel_time:
+            axs[idx].fill_betweenx([-100,+100],ii-np.timedelta64(15,'m'),\
+                            ii+np.timedelta64(14,'m'),\
+                                color=['orange','green'][idgroup],alpha=0.1)
     
-    axs[idx].set_title('Integrated '+var+' tendency between '+str(layer[0])+' and '+str(layer[1])+' m',fontsize=30)
+    if layer == 'CLtop':
+        axs[idx].set_title('Integrated '+var+' tendency below cloud top',fontsize=35)
+    else:        
+        axs[idx].set_title('Integrated '+var+' tendency between '+str(layer[0])+' and '+str(layer[1])+' m',fontsize=35)
     axs[idx].set_xlim([srt_plot,end_time])
-
+    axs[idx].tick_params(axis='both', which='major', labelsize=28)
     #####
     for day in np.arange(srt_plot,end_plot):
-        axs[idx].axvline(x=day,c='k',lw=0.5)
+        axs[idx].axvline(x=day,c='k',lw=1)
         
-axs[0].legend(ncol=2,fontsize=20)
+axs[0].legend(ncol=2,fontsize=22)
 axs[0].set_xlabel(None)
 axs[0].xaxis.set_visible(False) 
 axs[1].set_xlabel(None)
 
 plt.tight_layout()
 for n, ax in enumerate(axs):
-    ax.text(0.95, 0.95, string.ascii_uppercase[n], transform=ax.transAxes, 
-            size=20)
+    ax.text(0.95, 0.93, string.ascii_uppercase[n], transform=ax.transAxes, 
+            size=30)
 plt.tight_layout()
 plt.savefig(save_dir+'Figure_integrated_mom_budget_tmser.pdf', bbox_inches="tight")
 ##################
-#%% Diurnal cycle 
-## COMPOSITE
-layer = [0,750]
+#%% FIGURE 13 BUDGET CYCLE AND HYSTERESIS 
+layer = [0,200]
 acc_time = 3600*1
+klp=38
+day_interval=['2020-02-02','2020-02-09']
 
 dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).mean('z')\
-    .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
+    .sel(time=slice(day_interval[0],day_interval[1]))
+scale_tend = (da_scales_prof.diff('height')/np.diff(da_scales_prof['height']))\
+    .sel(height=slice(layer[0],layer[1])).mean('height').\
+        sel(time=slice(day_interval[0],day_interval[1]))
+dales_temp = acc_time*dales_to_plot.groupby(dales_to_plot.time.dt.hour).mean()
+
+fig, axs = plt.subplots(2,2,figsize=(20,15),gridspec_kw={'width_ratios': [1, 2]})
+idy = 1
+for idx,var in enumerate(['u','v']):
+    ## DALES
+    dales_temp[var+'tendlsall'].plot(c='k',lw=6, label='Large-scale forcing',ax=axs[idx,idy])
+    dales_temp[var+'tendphyall'].plot(c='g',lw=6,label='Subgrid + resolved eddies',ax=axs[idx,idy])
+    (-acc_time*scale_tend[var+'_pfw_pf'].sel(klp=klp)).groupby(scale_tend.time.dt.hour).mean()\
+        .plot(c='brown',ls='-',lw=6,marker='+',label='Mesoscale flows',ax=axs[idx,idy])
+    ax2 = axs[idx,idy].twinx()  
+    profiles[var].sel(time=slice(day_interval[0],day_interval[1]),\
+                      z=slice(layer[0],layer[1])).mean('z')\
+        .groupby('time.hour').mean().plot(color='b',\
+                                                  ls='--',lw=3,label= 'Zonal wind',ax=ax2)
+    ax2.tick_params(axis='y', colors='b')
+    if var =='u':
+        ax2.set_ylim([-12.5,-9])
+        ax2.set_ylabel(r'Zonal wind ($m s^{-1}$)',color='b',fontsize=30)
+    if var =='v':
+        ax2.set_ylim([-3,+0.5])
+        ax2.set_ylabel(r'Meridional wind ($m s^{-1}$)',color='b',fontsize=30)
+
+    axs[idx,idy].axhline(0,c='k',lw=0.5)
+    axs[idx,idy].set_title('')
+    # axs[idx,idy].set_title('Mean '+var+' tendency below '+str(layer[1])+' m',fontsize=35)
+
+    axs[idx,idy].tick_params(axis='both', which='major', labelsize=28)
+    ax2.tick_params(axis='both', which='major', labelsize=28)
+
+    axs[idx,idy].set_xlim([-0.75, 0.3])
+    axs[idx,idy].set_ylabel(None)
+    # axs[idx,idy].set_ylabel(r'Tendency ($m s^{-1} h^{-1}$)',fontsize=30)
+    axs[idx,idy].set_xlim([0, 23]) 
+    axs[idx,idy].set_ylim([-0.75, 0.6])
+        
+axs[1,idy].legend(loc='lower right',ncol=1,fontsize=28,bbox_to_anchor=(0.9,-0.8))
+axs[0,idy].set_xlabel(None)
+axs[1,idy].set_xlabel('Hour in local time',fontsize=30)
+########
+########
+
+idy = 0
+
+x  = (3600*samptend).sel(z=slice(layer[0],layer[1])).mean('z')
+x1 = tend_daily.sel(z=slice(layer[0],layer[1])).mean('z')
+
+
+##################
+for idx,var in enumerate(['u','v']):
+        
+    colors = cm.jet(np.linspace(0, 1, 9))
+    for idcol,ii in enumerate(x1.time[1:]):
+        axs[idx,idy].scatter(x1[var+'tendlsall'].sel(time=ii),\
+                          x1[var+'tendtotall'].sel(time=ii),\
+                              marker='s',c=colors[idcol-1],s=140,label=str(ii.values)[5:10])
+        if idcol%2:
+            axs[idx,idy].scatter(x[var+'tendlsall'].sel(time=ii.dt.strftime('%Y-%m-%d').values),\
+                          x[var+'tendtotall'].sel(time=ii.dt.strftime('%Y-%m-%d').values),\
+                              c=colors[idcol-1],alpha=1,s=5)
+
+    
+    axs[idx,idy].plot([-1.1, 0.8], [-1.1, 0.8],c='grey',lw=1)
+    axs[idx,idy].plot([-1.1, 0.8], [0,0],c='grey',lw=0.5)
+    axs[idx,idy].plot([0,0], [-1.1, 0.8],c='grey',lw=0.5)
+    
+    axs[idx,idy].set_xlim([-1.05, 0.3])
+    axs[idx,idy].set_ylim([-0.75, 0.6])
+    # axs[idy].set_xlim([-0.6, 0.4])
+    axs[idx,idy].tick_params(axis='both', which='major', labelsize=28)
+    
+    # plt.ylabel('Divergence duwt_dz ()')
+    axs[idx,idy].set_ylabel(r'Total tendency ($m s^{-1} h^{-1}$)',fontsize=30)
+    
+# axs[idx,0].set_title('Zonal momentum budget',size=25)
+# axs[idx,1].set_title('Meridional momentum budget',size=25)
+axs[1,idy].set_xlabel(r'Large scale tendency ($m s^{-1} h^{-1}$)',fontsize=30)
+
+axs[1,idy].legend(loc='lower left',ncol=2,fontsize=23, bbox_to_anchor=(0.01,-0.9))
+plt.suptitle('Mean of the lower '+str(layer[1])+' m',fontsize=35)
+
+plt.tight_layout()
+# plt.savefig(save_dir+'Figure13_mosaic.pdf', bbox_inches="tight")
+
+#%% Diurnal cycle 
+## COMPOSITE
+layer = [0,200]
+acc_time = 3600*1
+klp=38
+day_interval=['2020-02-02','2020-02-09']
+
+dales_to_plot   = samptend.sel(z=slice(layer[0],layer[1])).mean('z')\
+    .sel(time=slice(day_interval[0],day_interval[1]))
 h_clim_to_plot = harm_clim_avg.sel(z=slice(layer[0],layer[1])).mean('z')\
-    .sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
+    .sel(time=slice(day_interval[0],day_interval[1]))
     
 scale_tend = (da_scales_prof.diff('height')/np.diff(da_scales_prof['height']))\
     .sel(height=slice(layer[0],layer[1])).mean('height').\
-        sel(time=slice(np.datetime64('2020-02-02'),np.datetime64('2020-02-11')))
+        sel(time=slice(day_interval[0],day_interval[1]))
 
 dales_temp = acc_time*dales_to_plot.groupby(dales_to_plot.time.dt.hour).mean()
 fig, axs = plt.subplots(2,1,figsize=(19,15))
 for idx,var in enumerate(['v','u']):
     ## DALES
-    dales_temp[var+'tendtotall'].plot(c='r',lw=4,label='DALES: Tot',ax=axs[idx])
-    dales_temp[var+'tendlsall'].plot(c='k',lw=2, label='DALES: LS',ax=axs[idx])
-    dales_temp[var+'tendphyall'].plot(c='g',lw=4,label='DALES: Tot - LS',ax=axs[idx])
-    
-    ((-acc_time*scale_tend[var+'_psfw_psf']).groupby(scale_tend.time.dt.hour).mean()\
-        +dales_temp[var+'tenddifall'])\
-        .plot(c='m',marker='o',lw=2,markerfacecolor='none',label='DALES: Sub-filter',ax=axs[idx])
-    (-acc_time*scale_tend[var+'_pfw_pf']).groupby(scale_tend.time.dt.hour).mean()\
-        .plot(c='orange',ls='-',lw=2,marker='+',label='DALES: Up-filter',ax=axs[idx])
+    # dales_temp[var+'tendtotall'].plot(c='r',lw=4,label='DALES: Tot',ax=axs[idx])
+    dales_temp[var+'tendlsall'].plot(c='k',lw=6, label='Large-scale forcing',ax=axs[idx])
+    dales_temp[var+'tendphyall'].plot(c='g',lw=6,label='Subgrid + resolved eddies',ax=axs[idx])
+    # ((-acc_time*scale_tend[var+'_psfw_psf'].sel(klp=klp)).groupby(scale_tend.time.dt.hour).mean()\
+    #     +dales_temp[var+'tenddifall'])\
+    #     .plot(c='m',marker='o',lw=2,markerfacecolor='none',label='DALES: Sub-filter',ax=axs[idx])
+    (-acc_time*scale_tend[var+'_pfw_pf'].sel(klp=klp)).groupby(scale_tend.time.dt.hour).mean()\
+        .plot(c='brown',ls='-',lw=6,marker='+',label='Mesoscale flows',ax=axs[idx])
+        
+    ax2 = axs[idx].twinx()  
+    profiles[var].sel(time=slice(day_interval[0],day_interval[1]),\
+                      z=slice(layer[0],layer[1])).mean('z')\
+        .groupby('time.hour').mean().plot(color='b',\
+                                                  ls='--',lw=3,label= 'Zonal wind',ax=ax2)
+    ax2.tick_params(axis='y', colors='b')
+    if var =='u':
+        ax2.set_ylim([-12.5,-9])
+        ax2.set_ylabel(r'Zonal wind ($m s^{-1}$)',color='b',fontsize=30)
+    if var =='v':
+        ax2.set_ylim([-3,+0.5])
+        ax2.set_ylabel(r'Meridional wind ($m s^{-1}$)',color='b',fontsize=30)
+            
 
     # ## HARMONIE cy43 clim
     # acc_time*(h_clim_to_plot['dt'+var+'_dyn']+h_clim_to_plot['dt'+var+'_phy'])\
@@ -2097,8 +2250,10 @@ for idx,var in enumerate(['v','u']):
     #         plot(c='c',ls=':',label='H.clim cy43: Phy',ax=axs[idx]) 
 
     axs[idx].axhline(0,c='k',lw=0.5)
-    axs[idx].set_title('Mean '+var+' tendency between '+str(layer)+' m',fontsize=25)
+    axs[idx].set_title('Mean '+var+' tendency below '+str(layer[1])+' m',fontsize=35)
 
+    axs[idx].tick_params(axis='both', which='major', labelsize=28)
+    ax2.tick_params(axis='both', which='major', labelsize=28)
     if var == 'thl':
         plt.ylim([-0.00005, 0.00005]) 
         plt.ylabel('Tendency (K /hour)')
@@ -2107,13 +2262,15 @@ for idx,var in enumerate(['v','u']):
         plt.ylabel('Tendency (g/kg /hour)')
     else:
         # axs[idx].set_ylim([-0.85,0.8])
-        axs[idx].set_ylabel('Tendency (m/s /hour)')
+        axs[idx].set_ylabel(r'Tendency ($m s^{-1} h^{-1}$)',fontsize=30)
         axs[idx].set_xlim([0, 23]) 
         
-axs[1].legend(ncol=2,fontsize=16)
+axs[0].legend(ncol=2,fontsize=28)
 axs[0].set_xlabel(None)
-axs[1].set_xlabel('Hour in local time')
+axs[1].set_xlabel('Hour in local time',fontsize=30)
+    
 
+plt.tight_layout()
 # plt.savefig(save_dir+'Budget_diurnal_cycle.pdf', bbox_inches="tight")
 ########################
 #%% Groups and time of the day
@@ -2139,7 +2296,7 @@ plt.ylim([-0.005,0.01])
 #########################
 #%%
 #### CORRELATION PLOTS of tendencies 
-layer = [0,750]
+layer = [0,200]
 color_time = 'p'
 model = 'dales'
 
@@ -2159,7 +2316,7 @@ elif model =='dales':
 
 #### FIGURE 1
 ##################
-fig, axs = plt.subplots(1,2,figsize=(17,8))
+fig, axs = plt.subplots(1,2,figsize=(21,8))
 for idy,var in enumerate(['u','v']):
     if color_time=='hours':
         colors = cm.hsv(np.linspace(0, 1, 24))
@@ -2186,21 +2343,23 @@ for idy,var in enumerate(['u','v']):
         
     else:
         # plt.scatter(x,y,alpha=0.7,s=10)
-        # for idx,ii in enumerate(x1.time):
-        #     axs[idy].scatter(x1[var+'tendlsall'].sel(time=ii),\
-        #                       x1[var+'tendtotall'].sel(time=ii),\
-        #                           marker='s',c=col[idx-1],s=70,label=str(ii.values)[5:10])
-            # axs[idy].scatter(x[var+'tendlsall'].sel(time=ii.dt.strftime('%Y-%m-%d').values),\
-            #                  x[var+'tendtotall'].sel(time=ii.dt.strftime('%Y-%m-%d').values),\
-            #                      c=col[idx-1],alpha=0.4,s=5)
-        for idx,ii in enumerate([time_g1['iorg'],time_g3['iorg']]):
-            axs[idy].scatter(x[var+'tendlsall'].sel(time=ii).mean('time'),\
-                              x[var+'tendtotall'].sel(time=ii).mean('time'),\
-                                  c=col_groups[idx+idx],alpha=0.9,s=55,marker='s',label='Group '+str(idx+1+idx))
-        for hour in range(0,24):
-            axs[idy].text(x[var+'tendlsall'].where(samptend.time.dt.hour==hour,drop=True).mean(),\
-                      (x[var+'tendtotall']).where(samptend.time.dt.hour==hour,drop=True).mean(),\
-                        hour,c=matplotlib.cm.get_cmap('tab20b')(1/23*hour),fontsize=15,weight='light')
+        colors = cm.jet(np.linspace(0, 1, 9))
+        for idx,ii in enumerate(x1.time[1:]):
+            axs[idy].scatter(x1[var+'tendlsall'].sel(time=ii),\
+                              x1[var+'tendtotall'].sel(time=ii),\
+                                  marker='s',c=colors[idx-1],s=140,label=str(ii.values)[5:10])
+            if idx%2:
+                axs[idy].scatter(x[var+'tendlsall'].sel(time=ii.dt.strftime('%Y-%m-%d').values),\
+                              x[var+'tendtotall'].sel(time=ii.dt.strftime('%Y-%m-%d').values),\
+                                  c=colors[idx-1],alpha=1,s=5)
+        # for idx,ii in enumerate([time_g1['iorg'],time_g3['iorg']]):
+        #     axs[idy].scatter(x[var+'tendlsall'].sel(time=ii).mean('time'),\
+        #                       x[var+'tendtotall'].sel(time=ii).mean('time'),\
+        #                           c=col_groups[idx+idx],alpha=0.9,s=55,marker='s',label='Group '+str(idx+1+idx))
+        # for hour in range(0,24):
+        #     axs[idy].text(x[var+'tendlsall'].where(samptend.time.dt.hour==hour,drop=True).mean(),\
+        #               (x[var+'tendtotall']).where(samptend.time.dt.hour==hour,drop=True).mean(),\
+        #                 hour,c=matplotlib.cm.get_cmap('tab20b')(1/23*hour),fontsize=15,weight='light')
     ################## 
     
     axs[idy].plot([-1.1, 0.8], [-1.1, 0.8],c='grey',lw=1)
@@ -2214,10 +2373,10 @@ for idy,var in enumerate(['u','v']):
         plt.xlim([-0.0005, 0.0003])
         plt.ylim([-0.00003, 0.00003]) 
     else:
-        axs[idy].set_xlim([-1.1, 0.75])
-        axs[idy].set_ylim([-1.1, 0.75])
-        axs[idy].set_xlim([-0.6, 0.4])
-        axs[idy].set_ylim([-0.6, 0.4])
+        axs[idy].set_xlim([-0.75, 0.3])
+        axs[idy].set_ylim([-0.75, 0.3])
+        # axs[idy].set_xlim([-0.6, 0.4])
+        # axs[idy].set_ylim([-0.6, 0.4])
     
     # plt.ylabel('Divergence duwt_dz ()')
     axs[idy].set_xlabel(r'Large scale tendency ($m s^{-1} h^{-1}$)')
@@ -2225,7 +2384,7 @@ for idy,var in enumerate(['u','v']):
 axs[0].set_title('Zonal momentum budget',size=25)
 axs[1].set_title('Meridional momentum budget',size=25)
 axs[0].set_ylabel(r'Total tendency ($m s^{-1} h^{-1}$)')
-axs[1].legend(ncol=2)
+axs[0].legend(ncol=2,fontsize=23)
 plt.suptitle('Mean between '+str(layer[0])+' and '+str(layer[1])+' m',fontsize=22)
 
 plt.tight_layout()
@@ -2356,7 +2515,7 @@ fig, axs = plt.subplots(2,2,figsize=(22,12), gridspec_kw={'width_ratios': [1,6]}
 fig.subplots_adjust(top=top, bottom=bottom, left=left, right=right, \
                     hspace=0.15, wspace=0.25)
 
-for idx,var in enumerate(['wqtt','wthlt']):
+for idx,var in enumerate(['thv','wthvt']):
     iteration = 0
     profiles[var].mean('time').plot(y='z',c='k',lw=4, label='Mean',ax=axs[idx,0])
     for day in np.unique(profiles.time.dt.day)[:-1]:
@@ -2368,6 +2527,10 @@ for idx,var in enumerate(['wqtt','wthlt']):
     if var=='wthlt':
         colmin=-0.15
         colmax=0.03
+        axs[1,0].set_xlim([-0.08,0.03])
+    elif var =='wthvt':
+        colmin=-0.005
+        colmax=0.07
     elif var =='wqtt':
         colmin=-0.00005
         colmax=0.00015
@@ -2378,14 +2541,14 @@ for idx,var in enumerate(['wqtt','wthlt']):
           cmap=cm.PiYG_r,norm=mcolors.TwoSlopeNorm(0),ax=axs[idx,1],\
               add_colorbar=True,cbar_kwargs={r'label':'$m^2 s^{-2}$'})
         
-    tmser.zi.plot(x='time',ax=axs[idx,1],c='b',ls='-',label='Boundary layer')
-    hc_ql.plot(x='time',ax=axs[idx,1],c='r',ls='-',label='Boundary layer ql')
+    # tmser.zi.plot(x='time',ax=axs[idx,1],c='b',ls='-',label='Boundary layer')
+    hc_ql.plot(x='time',ax=axs[idx,1],c='k',ls='-',label='cloud top')
     # hc_thlvw.plot(x='time',ax=axs[idx,1],c='r',ls='--',label='Boundary layer thlw')
     
 
     axs[idx,0].yaxis.set_visible(True) 
     axs[idx,0].set_ylabel(r'z ($m$)')
-    axs[idx,0].set_xlabel(r'$m^2 s^{-2}$')
+    axs[idx,0].set_xlabel(r' X $m s^{-1}$')
     axs[idx,0].axvline(0,c='k',lw=0.5)
     axs[idx,1].yaxis.set_visible(False) 
     axs[idx,0].set_ylim(height_lim)
@@ -2395,11 +2558,11 @@ for idx,var in enumerate(['wqtt','wthlt']):
         axs[idx,1].axvline(x=day,c='k',lw=0.5)
 
 axs[0,1].set_title('Total Qt flux',fontsize=25)   
-axs[1,1].set_title('Total Thl flux',fontsize=25)   
+axs[1,1].set_title('Total Thv flux',fontsize=25)   
 axs[0,1].xaxis.set_visible(False) 
 axs[0,0].legend(fontsize=16)
 axs[0,1].legend(fontsize=16,loc='upper left')
-axs[1,0].set_xlim([-0.08,0.03])
+
 axs[1,1].set_xlabel(None)
 for n, ax in enumerate(axs.flat):
     ax.text(0.9, 1.05, string.ascii_uppercase[n], transform=ax.transAxes, 
@@ -3003,12 +3166,25 @@ var=['u','v']
 if make_videos:
 
 #%% FROM DALES
+    ii = '2020-02-08T04:00'
     print('Creating images for video')
     var = 'lwp'
+    plt.figure()
+    cape.sel(time=ii)[var].plot(vmin=0,vmax=0.1,\
+                            cmap=plt.cm.Blues_r)
+    plt.suptitle(r'$I_{org}$ = ' +str(np.round(da_org['iorg'].sel(time=ii).values,3)))
     
+    plt.figure(figsize=(6,9))
+    profiles['vwt'].sel(time=ii).plot(y='z',lw=2)
+    plt.axhline(cl_base.sel(time=ii),c='k',lw=0.5)
+    plt.axhline(hc_ql.sel(time=ii),c='k',lw=0.5)
+    plt.ylim([0,4500])
+    plt.axvline(0,c='k')
+    
+    #%%
     plt.figure()
     ax =cape.sel(time=ii)[var].plot(vmin=0,vmax=1,\
-                            cmap=plt.cm.Blues_r,x='lon',y='lat',\
+                            cmap=plt.cm.Blues_r,x='xt',y='yt',\
                             subplot_kws=dict(projection=proj))
     ax = plt.axes(projection=proj)
     ax.add_feature(coast, lw=2, zorder=7)
